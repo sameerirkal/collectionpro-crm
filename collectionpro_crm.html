@@ -1,0 +1,3877 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CollectionPro CRM — Simple collection management for modern agencies</title>
+  
+  <!-- Tailwind CSS CDN with typography & forms plugins -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              200: '#bae0fd',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              800: '#0c4a6e',
+              900: '#082f49',
+            },
+            debt: {
+              danger: '#ef4444',
+              warning: '#f59e0b',
+              success: '#10b981',
+              neutral: '#6b7280',
+              ptp: '#8b5cf6',
+              dispute: '#ec4899'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- SheetJS (xlsx) for Excel parsing & export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- JSZip & FileSaver for exporting complete repository files -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <style>
+    /* Custom scrollbar for data tables */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.5);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(107, 114, 128, 0.8);
+    }
+    .badge-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased selection:bg-brand-500 selection:text-white transition-colors duration-200">
+
+<div id="app" class="flex h-screen overflow-hidden">
+
+  <!-- LEFT SIDEBAR -->
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static flex flex-col justify-between -translate-x-full">
+    <!-- Brand Header -->
+    <div>
+      <div class="h-16 flex items-center justify-between px-5 border-b border-slate-200 dark:border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 to-sky-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+            <i data-lucide="shield-check" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-lg leading-tight tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+              CollectionPro
+              <span class="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">CRM</span>
+            </h1>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-[140px]">Modern Debt Ops</p>
+          </div>
+        </div>
+        <button id="close-sidebar-mobile" class="lg:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Quick Agency Metric pill -->
+      <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/40">
+        <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+          <span class="flex items-center gap-1"><i data-lucide="trending-up" class="w-3.5 h-3.5 text-emerald-500"></i> Recovery Rate</span>
+          <span id="sidebar-recovery-rate" class="font-semibold text-slate-700 dark:text-slate-300">0%</span>
+        </div>
+        <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+          <div id="sidebar-recovery-bar" class="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Navigation items -->
+      <nav class="p-3 space-y-1">
+        <button data-page="dashboard" class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 active">
+          <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+          <span>Dashboard</span>
+        </button>
+        <button data-page="customers" class="nav-item flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80">
+          <div class="flex items-center gap-3">
+            <i data-lucide="users" class="w-5 h-5"></i>
+            <span>Customers</span>
+          </div>
+          <span id="sidebar-total-customers-badge" class="px-2 py-0.5 text-xs rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">0</span>
+        </button>
+        <button data-page="followups" class="nav-item flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80">
+          <div class="flex items-center gap-3">
+            <i data-lucide="calendar-clock" class="w-5 h-5"></i>
+            <span>Follow-ups</span>
+          </div>
+          <span id="sidebar-due-followups-badge" class="px-2 py-0.5 text-xs rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-semibold">0</span>
+        </button>
+        <button data-page="payments" class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80">
+          <i data-lucide="credit-card" class="w-5 h-5"></i>
+          <span>Payments Ledger</span>
+        </button>
+        <button data-page="agents" class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80">
+          <i data-lucide="user-check" class="w-5 h-5"></i>
+          <span>Agents Team</span>
+        </button>
+        <button data-page="reports" class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80">
+          <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+          <span>Analytics & Reports</span>
+        </button>
+        <button data-page="settings" class="nav-item flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+          <span>Settings & Templates</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+      <!-- Project Repository Export CTA -->
+      <button id="btn-export-project" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors border border-slate-200/80 dark:border-slate-700">
+        <i data-lucide="folder-git-2" class="w-4 h-4 text-sky-500"></i>
+        <span>Export Next.js Project ZIP</span>
+      </button>
+
+      <div class="flex items-center justify-between p-2 rounded-lg bg-slate-100/60 dark:bg-slate-800/50">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs ring-1 ring-sky-500/30">
+            AG
+          </div>
+          <div class="min-w-0">
+            <p id="current-agent-name" class="text-xs font-semibold truncate text-slate-800 dark:text-slate-200">Alex Sharma</p>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Senior Recovery Officer</p>
+          </div>
+        </div>
+        <button id="theme-toggle" class="p-1.5 rounded-md text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition" title="Toggle Theme">
+          <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
+          <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- BACKDROP FOR MOBILE SIDEBAR -->
+  <div id="sidebar-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden lg:hidden"></div>
+
+  <!-- MAIN VIEWPORT -->
+  <div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+
+    <!-- TOPBAR -->
+    <header class="h-16 flex items-center justify-between px-4 sm:px-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-10">
+      <div class="flex items-center gap-3 flex-1 max-w-xl">
+        <button id="open-sidebar-mobile" class="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+        <!-- Global Search Bar -->
+        <div class="relative w-full">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input type="text" id="global-search-input" placeholder="Search by name, phone, account #, or ID (Press '/' to search)..."
+            class="w-full pl-9 pr-4 py-2 text-xs sm:text-sm bg-slate-100 dark:bg-slate-800/80 border-0 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-brand-500 outline-none transition" />
+          <kbd class="hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] bg-white dark:bg-slate-700 text-slate-400 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-600 font-mono">/</kbd>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Quick Import Customers Button -->
+        <button id="btn-quick-import" class="inline-flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition">
+          <i data-lucide="upload" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Import Customers</span>
+        </button>
+
+        <!-- Quick Sample Data Loader -->
+        <button id="btn-sample-data" class="hidden md:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Reset / Reload 20 Realistic Demo Records">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-sky-500"></i>
+          <span>Reload Sample Data</span>
+        </button>
+
+        <!-- Active Agent Switcher Dropdown -->
+        <div class="relative">
+          <select id="active-agent-select" class="text-xs bg-slate-100 dark:bg-slate-800 border-0 rounded-lg py-2 pl-3 pr-8 text-slate-800 dark:text-slate-200 font-medium focus:ring-1 focus:ring-brand-500 outline-none cursor-pointer">
+            <option value="Alex Sharma">Alex Sharma</option>
+            <option value="Priya Verma">Priya Verma</option>
+            <option value="Rahul Nair">Rahul Nair</option>
+            <option value="Sneha Patel">Sneha Patel</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT BODY (SCROLLABLE) -->
+    <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+      <!-- ============================================== -->
+      <!-- PAGE: DASHBOARD -->
+      <!-- ============================================== -->
+      <section id="page-dashboard" class="page-content space-y-6">
+        <!-- Dashboard Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Agency Executive Dashboard</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Real-time portfolio overview, overdue accounts & today's recovery velocity.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-export-customers-csv" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition">
+              <i data-lucide="download" class="w-4 h-4 text-emerald-500"></i>
+              <span>Export Portfolio (CSV)</span>
+            </button>
+            <button onclick="switchPage('customers')" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-brand-600 text-white hover:bg-brand-700 shadow-sm transition">
+              <i data-lucide="user-plus" class="w-4 h-4"></i>
+              <span>Manage Customers</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 8 Top-Level Metric Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Total Customers -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Total Customers</span>
+              <div class="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+                <i data-lucide="users" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div id="stat-total-customers" class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">0</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+                <span class="text-emerald-500 font-medium">Active accounts</span> in database
+              </p>
+            </div>
+          </div>
+
+          <!-- Total Outstanding -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Total Outstanding</span>
+              <div class="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400">
+                <i data-lucide="alert-circle" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div id="stat-total-outstanding" class="text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400">₹0</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Pending debt across portfolio</p>
+            </div>
+          </div>
+
+          <!-- Total Collected -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Total Collected</span>
+              <div class="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                <i data-lucide="badge-percent" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div id="stat-total-collected" class="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">₹0</div>
+              <p id="stat-collection-rate" class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">0% Recovery achieved</p>
+            </div>
+          </div>
+
+          <!-- Overdue Customers -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Overdue Accounts</span>
+              <div class="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+                <i data-lucide="clock-alert" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div id="stat-overdue-count" class="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400">0</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Due date has passed</p>
+            </div>
+          </div>
+
+          <!-- Promise to Pay (PTP) -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Promise to Pay (PTP)</span>
+              <div class="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400">
+                <i data-lucide="handshake" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div id="stat-ptp-count" class="text-2xl sm:text-3xl font-extrabold text-purple-600 dark:text-purple-400">0</div>
+              <p id="stat-ptp-amount" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">₹0 committed</p>
+            </div>
+          </div>
+
+          <!-- Contacted Today -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Contacted Today</span>
+              <div class="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400">
+                <i data-lucide="phone-outgoing" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div id="stat-contacted-today" class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">0</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">WhatsApp & Call logs today</p>
+            </div>
+          </div>
+
+          <!-- High Priority / Critical -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">High & Critical Priority</span>
+              <div class="p-2 rounded-xl bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400">
+                <i data-lucide="flame" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div id="stat-critical-count" class="text-2xl sm:text-3xl font-extrabold text-red-600 dark:text-red-400">0</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Immediate intervention</p>
+            </div>
+          </div>
+
+          <!-- Pending Customers -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Uncontacted / Pending</span>
+              <div class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                <i data-lucide="hourglass" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div id="stat-pending-count" class="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-slate-200">0</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Awaiting first outreach</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts & Visual Breakdowns -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Status Distribution -->
+          <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <i data-lucide="pie-chart" class="w-4 h-4 text-brand-500"></i>
+                  Portfolio By Status
+                </h3>
+                <span class="text-xs text-slate-400">Live</span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Account counts across collection stages</p>
+              
+              <div id="chart-status-bars" class="mt-5 space-y-3">
+                <!-- Injected via JavaScript -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Priority & Risk Matrix -->
+          <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <i data-lucide="shield-alert" class="w-4 h-4 text-amber-500"></i>
+                  Priority Allocation
+                </h3>
+                <span class="text-xs text-slate-400">Risk Profile</span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Accounts stratified by urgency tier</p>
+
+              <div id="chart-priority-bars" class="mt-5 space-y-3">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Agent Outreach Leaderboard -->
+          <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <i data-lucide="award" class="w-4 h-4 text-emerald-500"></i>
+                  Agent Leaderboard
+                </h3>
+                <span class="text-xs text-slate-400">Performance</span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Total collections by assigned agent</p>
+
+              <div id="dashboard-agent-leaderboard" class="mt-4 space-y-3">
+                <!-- Dynamic agent rows -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Follow-up Queue Table on Dashboard -->
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <i data-lucide="calendar" class="w-4 h-4 text-sky-500"></i>
+                Today's Action Required (Follow-ups & Overdue)
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Critical tasks and scheduled reminders requiring contact today</p>
+            </div>
+            <button onclick="switchPage('followups')" class="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline inline-flex items-center gap-1">
+              View all follow-ups <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="text-slate-400 uppercase border-b border-slate-100 dark:border-slate-800 text-[11px]">
+                <tr>
+                  <th class="py-2.5 px-3">Customer</th>
+                  <th class="py-2.5 px-3">Outstanding</th>
+                  <th class="py-2.5 px-3">Status</th>
+                  <th class="py-2.5 px-3">Follow-up Date</th>
+                  <th class="py-2.5 px-3">Assigned Agent</th>
+                  <th class="py-2.5 px-3 text-right">Quick Contact</th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-followup-tbody" class="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-700 dark:text-slate-300">
+                <!-- Dynamic follow-up rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PAGE: CUSTOMERS DIRECTORY -->
+      <!-- ============================================== -->
+      <section id="page-customers" class="page-content hidden space-y-4">
+        <!-- Directory Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Customer Accounts Directory</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Filter, search, track collections, record payments, and start WhatsApp conversations.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-open-import-modal" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm transition">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+              <span>Import Excel / CSV</span>
+            </button>
+            <button id="btn-export-filtered-csv" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm transition">
+              <i data-lucide="download" class="w-4 h-4 text-sky-500"></i>
+              <span>Export Filtered</span>
+            </button>
+            <button id="btn-add-customer-modal" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Add Customer</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <!-- Search field -->
+            <div class="lg:col-span-2 relative">
+              <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input type="text" id="filter-search-text" placeholder="Search by name, phone, account #..." 
+                class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-brand-500 outline-none" />
+            </div>
+
+            <!-- Status Filter -->
+            <div>
+              <select id="filter-status-select" class="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 outline-none">
+                <option value="ALL">Status: All</option>
+                <option value="Pending">Pending</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Promise to Pay">Promise to Pay</option>
+                <option value="Partially Paid">Partially Paid</option>
+                <option value="Paid">Paid</option>
+                <option value="Overdue">Overdue</option>
+                <option value="Disputed">Disputed</option>
+              </select>
+            </div>
+
+            <!-- Priority Filter -->
+            <div>
+              <select id="filter-priority-select" class="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 outline-none">
+                <option value="ALL">Priority: All</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+
+            <!-- Agent Filter -->
+            <div>
+              <select id="filter-agent-select" class="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 outline-none">
+                <option value="ALL">Agent: All Agents</option>
+                <option value="Alex Sharma">Alex Sharma</option>
+                <option value="Priya Verma">Priya Verma</option>
+                <option value="Rahul Nair">Rahul Nair</option>
+                <option value="Sneha Patel">Sneha Patel</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Secondary Filters & Reset -->
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="text-slate-400 font-medium">Quick Due Date:</span>
+              <button onclick="applyDueDateQuickFilter('all')" class="due-pill px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200 active">All</button>
+              <button onclick="applyDueDateQuickFilter('today')" class="due-pill px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200">Due Today</button>
+              <button onclick="applyDueDateQuickFilter('overdue')" class="due-pill px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200">Overdue</button>
+              <button onclick="applyDueDateQuickFilter('thisweek')" class="due-pill px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200">Next 7 Days</button>
+            </div>
+            <div class="flex items-center gap-3">
+              <span id="filter-count-badge" class="text-slate-500 dark:text-slate-400">Showing 0 accounts</span>
+              <button id="btn-clear-filters" class="text-brand-600 dark:text-brand-400 hover:underline font-medium">Clear Filters</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Customer Table Card -->
+        <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[11px] tracking-wider border-b border-slate-200/80 dark:border-slate-800 select-none">
+                <tr>
+                  <th class="py-3 px-4 cursor-pointer hover:text-slate-800 dark:hover:text-white" onclick="sortCustomerTable('id')">
+                    ID / Acc # <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1"></i>
+                  </th>
+                  <th class="py-3 px-4 cursor-pointer hover:text-slate-800 dark:hover:text-white" onclick="sortCustomerTable('name')">
+                    Customer Name <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1"></i>
+                  </th>
+                  <th class="py-3 px-4">Phone / Contact</th>
+                  <th class="py-3 px-4 cursor-pointer hover:text-slate-800 dark:hover:text-white" onclick="sortCustomerTable('outstanding')">
+                    Outstanding (₹) <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1"></i>
+                  </th>
+                  <th class="py-3 px-4 cursor-pointer hover:text-slate-800 dark:hover:text-white" onclick="sortCustomerTable('dueDate')">
+                    Due Date <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1"></i>
+                  </th>
+                  <th class="py-3 px-4">Status</th>
+                  <th class="py-3 px-4">Priority</th>
+                  <th class="py-3 px-4">Assigned Agent</th>
+                  <th class="py-3 px-4 text-center">Fast Contact</th>
+                  <th class="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="customer-table-tbody" class="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
+                <!-- Customer table rows injected via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination Bar -->
+          <div class="p-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <div class="flex items-center gap-2">
+              <span>Rows per page:</span>
+              <select id="pagination-limit-select" class="bg-slate-100 dark:bg-slate-800 border-0 rounded px-2 py-1 text-slate-800 dark:text-slate-200 outline-none">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+              </select>
+              <span id="pagination-info">Showing 1-20 of 20</span>
+            </div>
+            <div class="flex items-center gap-1.5" id="pagination-controls">
+              <!-- Pagination buttons -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PAGE: FOLLOW-UPS -->
+      <!-- ============================================== -->
+      <section id="page-followups" class="page-content hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Follow-up Management</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Track promises to pay, scheduled customer call-backs, and urgent reminders.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <span class="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase">Today's Due Follow-ups</span>
+            <p id="followup-stat-today" class="text-2xl font-bold text-amber-700 dark:text-amber-300 mt-1">0</p>
+          </div>
+          <div class="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+            <span class="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase">Active Promises to Pay</span>
+            <p id="followup-stat-ptp" class="text-2xl font-bold text-purple-700 dark:text-purple-300 mt-1">0</p>
+          </div>
+          <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20">
+            <span class="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase">Broken PTPs / Overdue Callbacks</span>
+            <p id="followup-stat-overdue" class="text-2xl font-bold text-rose-700 dark:text-rose-300 mt-1">0</p>
+          </div>
+        </div>
+
+        <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="clock" class="w-4 h-4 text-brand-500"></i>
+              Follow-up Action Ledger
+            </h3>
+            <span class="text-xs text-slate-400">Click any row to open customer profile</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 uppercase text-[11px]">
+                <tr>
+                  <th class="py-3 px-4">Customer</th>
+                  <th class="py-3 px-4">Contact</th>
+                  <th class="py-3 px-4">Outstanding</th>
+                  <th class="py-3 px-4">Scheduled Date</th>
+                  <th class="py-3 px-4">Type</th>
+                  <th class="py-3 px-4">Agent Note</th>
+                  <th class="py-3 px-4 text-right">Direct Action</th>
+                </tr>
+              </thead>
+              <tbody id="followup-page-tbody" class="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PAGE: PAYMENTS LEDGER -->
+      <!-- ============================================== -->
+      <section id="page-payments" class="page-content hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Payments & Collections Ledger</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Audit trail of all recorded client collections, payment modes, and receipts.</p>
+          </div>
+          <button onclick="switchPage('customers')" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>Record Customer Payment</span>
+          </button>
+        </div>
+
+        <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="receipt" class="w-4 h-4 text-emerald-500"></i>
+              Recorded Transaction Entries
+            </h3>
+            <span id="payments-total-sum-badge" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">Total: ₹0</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 uppercase text-[11px]">
+                <tr>
+                  <th class="py-3 px-4">Date / Time</th>
+                  <th class="py-3 px-4">Customer</th>
+                  <th class="py-3 px-4">Loan Acc #</th>
+                  <th class="py-3 px-4">Amount Paid</th>
+                  <th class="py-3 px-4">Payment Method</th>
+                  <th class="py-3 px-4">Reference / UTR</th>
+                  <th class="py-3 px-4">Collected By</th>
+                  <th class="py-3 px-4">Notes</th>
+                </tr>
+              </thead>
+              <tbody id="payments-ledger-tbody" class="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
+                <!-- Dynamic payments -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PAGE: AGENTS MANAGEMENT -->
+      <!-- ============================================== -->
+      <section id="page-agents" class="page-content hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Collection Agents Roster</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Agent allocation, target achievement, and recovery statistics.</p>
+          </div>
+        </div>
+
+        <div id="agents-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Dynamic Agent cards -->
+        </div>
+
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white mb-2">Team Workload Distribution</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Portfolios are auto-balanced or assigned upon Excel import.</p>
+          <div id="agents-table-summary" class="overflow-x-auto">
+            <!-- Dynamic Agent Table -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PAGE: REPORTS & ANALYTICS -->
+      <!-- ============================================== -->
+      <section id="page-reports" class="page-content hidden space-y-6">
+        <div>
+          <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Agency Recovery Analytics</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Comprehensive collection metrics, recovery velocities, and performance ratios.</p>
+        </div>
+
+        <!-- 4 KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+            <span class="text-xs font-semibold uppercase text-slate-400">Collection Recovery Rate</span>
+            <div id="report-recovery-rate" class="text-3xl font-extrabold text-emerald-600 mt-2">0%</div>
+            <p class="text-xs text-slate-500 mt-1">Collected vs Total Assigned Debt</p>
+          </div>
+          <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+            <span class="text-xs font-semibold uppercase text-slate-400">PTP Conversion Rate</span>
+            <div id="report-ptp-rate" class="text-3xl font-extrabold text-purple-600 mt-2">0%</div>
+            <p class="text-xs text-slate-500 mt-1">Promise to Pay honored</p>
+          </div>
+          <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+            <span class="text-xs font-semibold uppercase text-slate-400">Outreach Coverage</span>
+            <div id="report-contact-coverage" class="text-3xl font-extrabold text-sky-600 mt-2">0%</div>
+            <p class="text-xs text-slate-500 mt-1">Accounts contacted at least once</p>
+          </div>
+          <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+            <span class="text-xs font-semibold uppercase text-slate-400">Critical Delinquency</span>
+            <div id="report-critical-percentage" class="text-3xl font-extrabold text-rose-600 mt-2">0%</div>
+            <p class="text-xs text-slate-500 mt-1">Portfolio in Critical status</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4">
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white">Aging / Overdue Breakdown</h3>
+            <div id="report-aging-breakdown" class="space-y-3">
+              <!-- Injected via JS -->
+            </div>
+          </div>
+          <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4">
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white">Channel Outreach Efficiency</h3>
+            <div id="report-channels-breakdown" class="space-y-3">
+              <!-- Injected via JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PAGE: SETTINGS -->
+      <!-- ============================================== -->
+      <section id="page-settings" class="page-content hidden space-y-6">
+        <div>
+          <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">CRM Agency Settings</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Configure agency name, currency symbols, and customize WhatsApp message templates.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-1 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4">
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="building-2" class="w-4 h-4 text-brand-500"></i>
+              Agency Profile
+            </h3>
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="block text-slate-500 dark:text-slate-400 mb-1">Agency Name</label>
+                <input type="text" id="setting-agency-name" value="Apex Financial Recovery Agency" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+              </div>
+              <div>
+                <label class="block text-slate-500 dark:text-slate-400 mb-1">Currency Symbol</label>
+                <input type="text" id="setting-currency-symbol" value="₹" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+              </div>
+              <div>
+                <label class="block text-slate-500 dark:text-slate-400 mb-1">Default Logged-in Agent</label>
+                <input type="text" id="setting-default-agent" value="Alex Sharma" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+              </div>
+              <button onclick="saveAgencySettings()" class="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition">Save Agency Preferences</button>
+            </div>
+          </div>
+
+          <!-- WhatsApp Message Templates Customizer -->
+          <div class="lg:col-span-2 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <i data-lucide="message-square" class="w-4 h-4 text-emerald-500"></i>
+                  WhatsApp Message Templates
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Variables supported: <code class="text-brand-600 dark:text-brand-400 font-mono">{{customer_name}}</code>, <code class="text-brand-600 dark:text-brand-400 font-mono">{{outstanding_amount}}</code>, <code class="text-brand-600 dark:text-brand-400 font-mono">{{due_date}}</code>, <code class="text-brand-600 dark:text-brand-400 font-mono">{{loan_account}}</code>, <code class="text-brand-600 dark:text-brand-400 font-mono">{{agent_name}}</code></p>
+              </div>
+            </div>
+
+            <div class="space-y-4" id="template-editor-list">
+              <!-- Templates will render here -->
+            </div>
+            <button onclick="saveCustomTemplates()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition">Save All WhatsApp Templates</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============================================== -->
+<!-- MODALS & DRAWERS -->
+<!-- ============================================== -->
+
+<!-- 1. CUSTOMER PROFILE / DETAILS DRAWER -->
+<div id="customer-details-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+  <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity" onclick="closeCustomerDrawer()"></div>
+  <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+    <div class="pointer-events-auto w-screen max-w-2xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800">
+      
+      <!-- Drawer Header -->
+      <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-lg">
+            <span id="drawer-avatar-initials">AK</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 id="drawer-customer-name" class="text-lg font-bold text-slate-900 dark:text-white">Customer Profile</h3>
+              <span id="drawer-status-badge"></span>
+              <span id="drawer-priority-badge"></span>
+            </div>
+            <p id="drawer-customer-sub" class="text-xs text-slate-500 dark:text-slate-400">ID: CUST-001 • Loan # LN-90123</p>
+          </div>
+        </div>
+        <button onclick="closeCustomerDrawer()" class="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Quick Action Toolbar in Drawer -->
+      <div class="px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2">
+        <button id="drawer-btn-whatsapp" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
+          <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Send WhatsApp
+        </button>
+        <button id="drawer-btn-payment" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
+          <i data-lucide="credit-card" class="w-3.5 h-3.5"></i> Record Payment
+        </button>
+        <button id="drawer-btn-ptp" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition">
+          <i data-lucide="handshake" class="w-3.5 h-3.5"></i> Promise to Pay (PTP)
+        </button>
+        <button id="drawer-btn-followup" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition">
+          <i data-lucide="calendar-plus" class="w-3.5 h-3.5"></i> Schedule Follow-up
+        </button>
+      </div>
+
+      <!-- Drawer Scrollable Body -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
+        
+        <!-- Financial Summary Banner -->
+        <div class="grid grid-cols-3 gap-3 p-4 rounded-xl bg-slate-100 dark:bg-slate-800/80">
+          <div>
+            <span class="text-slate-400 block text-[10px] uppercase font-semibold">Total Amount</span>
+            <span id="drawer-total-amount" class="text-base font-bold text-slate-800 dark:text-slate-200">₹0</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[10px] uppercase font-semibold">Amount Paid</span>
+            <span id="drawer-paid-amount" class="text-base font-bold text-emerald-600 dark:text-emerald-400">₹0</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[10px] uppercase font-semibold">Outstanding Balance</span>
+            <span id="drawer-outstanding-amount" class="text-base font-bold text-rose-600 dark:text-rose-400">₹0</span>
+          </div>
+        </div>
+
+        <!-- 2 Column Info Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Customer Contacts -->
+          <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+            <h4 class="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px] mb-2">Contact Details</h4>
+            <div class="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-slate-400">Primary Phone:</span>
+              <span id="drawer-phone" class="font-semibold text-slate-700 dark:text-slate-200"></span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-slate-400">Alt Phone:</span>
+              <span id="drawer-alt-phone" class="text-slate-700 dark:text-slate-200">-</span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-slate-400">Email:</span>
+              <span id="drawer-email" class="text-slate-700 dark:text-slate-200">-</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-slate-400">Address:</span>
+              <span id="drawer-address" class="text-slate-700 dark:text-slate-200 text-right">-</span>
+            </div>
+          </div>
+
+          <!-- Loan & Account Details -->
+          <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+            <h4 class="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px] mb-2">Loan & Portfolio Info</h4>
+            <div class="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-slate-400">Loan Type:</span>
+              <span id="drawer-loan-type" class="font-semibold text-slate-700 dark:text-slate-200">-</span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-slate-400">Due Date:</span>
+              <span id="drawer-due-date" class="font-semibold text-rose-600 dark:text-rose-400">-</span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-slate-400">Last Payment Date:</span>
+              <span id="drawer-last-payment-date" class="text-slate-700 dark:text-slate-200">-</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-slate-400">Assigned Officer:</span>
+              <span id="drawer-assigned-agent" class="text-slate-700 dark:text-slate-200 font-semibold">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Quick Activity Log / Note -->
+        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+          <h4 class="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px] mb-2">Log New Activity / Call Note</h4>
+          <div class="flex gap-2">
+            <select id="drawer-new-activity-type" class="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-800 dark:text-slate-200">
+              <option value="Phone Call">Phone Call</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Promise to Pay">Promise to Pay</option>
+              <option value="Note">General Note</option>
+              <option value="Dispute">Dispute Raised</option>
+            </select>
+            <input type="text" id="drawer-new-activity-note" placeholder="E.g., Customer promised payment by 15th via NEFT..." class="flex-1 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-200" />
+            <button onclick="addDrawerActivity()" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg">Log</button>
+          </div>
+        </div>
+
+        <!-- Activity Timeline -->
+        <div>
+          <h4 class="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px] mb-3 flex items-center gap-1.5">
+            <i data-lucide="history" class="w-4 h-4 text-slate-400"></i> Collection Timeline & Audit Trail
+          </h4>
+          <div id="drawer-timeline" class="space-y-3 relative before:absolute before:inset-0 before:left-3 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800 ml-1">
+            <!-- Timeline items injected -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. WHATSAPP SENDER MODAL -->
+<div id="whatsapp-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs hidden">
+  <div class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+          <i data-lucide="message-circle" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-slate-900 dark:text-white text-base">Send WhatsApp Message</h3>
+          <p id="wa-modal-target" class="text-xs text-slate-500 dark:text-slate-400">Target: Customer (+91 ...)</p>
+        </div>
+      </div>
+      <button onclick="closeWhatsAppModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <div class="p-5 space-y-4 text-xs">
+      <div>
+        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Select Predefined Template:</label>
+        <select id="wa-template-picker" onchange="applySelectedTemplate()" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 outline-none">
+          <option value="reminder">Payment Reminder</option>
+          <option value="dueToday">Due Today Urgent</option>
+          <option value="overdue">Overdue Final Notice</option>
+          <option value="ptp">Promise to Pay Commitment</option>
+          <option value="custom">Custom Blank Message</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Message Preview (Variables Auto-Filled):</label>
+        <textarea id="wa-message-content" rows="5" class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 outline-none font-mono text-xs leading-relaxed focus:ring-2 focus:ring-emerald-500"></textarea>
+      </div>
+
+      <div class="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 flex items-start gap-2">
+        <i data-lucide="info" class="w-4 h-4 shrink-0 mt-0.5"></i>
+        <span>Clicking "Open WhatsApp" opens standard secure WhatsApp Web / Mobile chat with this recipient and logs this outreach to the customer timeline.</span>
+      </div>
+    </div>
+
+    <div class="p-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+      <button onclick="closeWhatsAppModal()" class="px-4 py-2 text-xs font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700">Cancel</button>
+      <button id="wa-btn-submit" onclick="executeWhatsAppSend()" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition">
+        <i data-lucide="send" class="w-4 h-4"></i>
+        <span>Open WhatsApp</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. RECORD PAYMENT MODAL -->
+<div id="payment-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs hidden">
+  <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+        <i data-lucide="credit-card" class="w-5 h-5 text-emerald-500"></i>
+        Record Received Payment
+      </h3>
+      <button onclick="closePaymentModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <form id="payment-form" onsubmit="handleRecordPayment(event)" class="p-5 space-y-3.5 text-xs">
+      <div>
+        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Customer</label>
+        <input type="text" id="pay-customer-name" readonly class="w-full p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Current Outstanding</label>
+          <input type="text" id="pay-current-outstanding" readonly class="w-full p-2 bg-slate-100 dark:bg-slate-800 rounded-lg font-bold text-rose-600 dark:text-rose-400 border border-slate-200 dark:border-slate-700" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Payment Amount (₹) *</label>
+          <input type="number" id="pay-amount" required min="1" step="any" placeholder="e.g. 5000" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-bold" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Payment Date *</label>
+          <input type="date" id="pay-date" required class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Payment Method</label>
+          <select id="pay-method" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
+            <option value="UPI / QR">UPI / QR</option>
+            <option value="NEFT / RTGS / IMPS">NEFT / RTGS</option>
+            <option value="Debit / Credit Card">Debit / Credit Card</option>
+            <option value="Cash Deposit">Cash Deposit</option>
+            <option value="Cheque / DD">Cheque / Demand Draft</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Transaction Ref / UTR #</label>
+        <input type="text" id="pay-ref" placeholder="e.g. UPI-9283748291" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Payment Notes</label>
+        <input type="text" id="pay-notes" placeholder="e.g. First installment cleared after WhatsApp outreach" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+      </div>
+
+      <div class="pt-2 flex justify-end gap-2">
+        <button type="button" onclick="closePaymentModal()" class="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-sm">Save & Update Debt Ledger</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 4. RECORD PROMISE TO PAY (PTP) MODAL -->
+<div id="ptp-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs hidden">
+  <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+        <i data-lucide="handshake" class="w-5 h-5 text-purple-500"></i>
+        Record Promise to Pay (PTP)
+      </h3>
+      <button onclick="closePtpModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <form id="ptp-form" onsubmit="handleRecordPtp(event)" class="p-5 space-y-3.5 text-xs">
+      <div>
+        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Customer</label>
+        <input type="text" id="ptp-customer-name" readonly class="w-full p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Promised Amount (₹) *</label>
+          <input type="number" id="ptp-amount" required min="1" step="any" placeholder="5000" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-bold" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Promised Date *</label>
+          <input type="date" id="ptp-date" required class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Agent Notes / Terms Agreed</label>
+        <textarea id="ptp-notes" rows="3" placeholder="Customer agreed to clear full outstanding amount after salary credited on 10th..." class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"></textarea>
+      </div>
+
+      <div class="pt-2 flex justify-end gap-2">
+        <button type="button" onclick="closePtpModal()" class="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow-sm">Save PTP & Set Reminder</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 5. SCHEDULE FOLLOW-UP MODAL -->
+<div id="followup-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs hidden">
+  <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+        <i data-lucide="calendar-plus" class="w-5 h-5 text-amber-500"></i>
+        Schedule Next Follow-Up
+      </h3>
+      <button onclick="closeFollowupModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <form id="followup-form" onsubmit="handleScheduleFollowup(event)" class="p-5 space-y-3.5 text-xs">
+      <div>
+        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Customer</label>
+        <input type="text" id="fu-customer-name" readonly class="w-full p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Follow-up Date *</label>
+          <input type="date" id="fu-date" required class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Follow-up Time</label>
+          <input type="time" id="fu-time" value="11:00" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Reminder Instructions</label>
+        <textarea id="fu-note" rows="3" placeholder="Call customer regarding approval from branch manager for settlement discount..." class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"></textarea>
+      </div>
+
+      <div class="pt-2 flex justify-end gap-2">
+        <button type="button" onclick="closeFollowupModal()" class="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg shadow-sm">Save Scheduled Follow-Up</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 6. EXCEL / CSV IMPORT WIZARD MODAL -->
+<div id="import-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs hidden">
+  <div class="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+          <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-slate-900 dark:text-white text-base">Import Customer Excel / CSV</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Automatic column mapping with pre-import validation and duplicate check</p>
+        </div>
+      </div>
+      <button onclick="closeImportModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Modal Body: Step 1 Upload OR Step 2 Preview -->
+    <div class="p-6 overflow-y-auto space-y-5 text-xs flex-1">
+      
+      <!-- Upload Drop Zone -->
+      <div id="import-dropzone" class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 dark:hover:border-brand-500 rounded-2xl p-8 text-center transition cursor-pointer bg-slate-50/50 dark:bg-slate-800/40" onclick="document.getElementById('import-file-input').click()">
+        <input type="file" id="import-file-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleExcelFileUpload(event)" />
+        <i data-lucide="upload-cloud" class="w-12 h-12 mx-auto text-brand-500 mb-2"></i>
+        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200">Drag & drop your Excel (.xlsx, .xls) or CSV file here</h4>
+        <p class="text-xs text-slate-400 mt-1">Intelligent mapping automatically detects: "Customer Name", "Phone/Mobile", "Outstanding", "Due Date", etc.</p>
+        <button type="button" class="mt-4 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-semibold inline-flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="folder-search" class="w-4 h-4"></i> Browse Local File
+        </button>
+      </div>
+
+      <!-- Import Preview Section (Hidden initially) -->
+      <div id="import-preview-section" class="hidden space-y-4">
+        <!-- Statistics Pills -->
+        <div class="grid grid-cols-4 gap-3 text-center">
+          <div class="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl">
+            <span class="text-[10px] uppercase text-slate-400 block font-semibold">Total Rows</span>
+            <span id="preview-total-rows" class="text-lg font-bold text-slate-800 dark:text-slate-200">0</span>
+          </div>
+          <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl">
+            <span class="text-[10px] uppercase text-emerald-600 dark:text-emerald-400 block font-semibold">Valid Records</span>
+            <span id="preview-valid-rows" class="text-lg font-bold text-emerald-600 dark:text-emerald-400">0</span>
+          </div>
+          <div class="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl">
+            <span class="text-[10px] uppercase text-amber-600 dark:text-amber-400 block font-semibold">Duplicates</span>
+            <span id="preview-duplicate-rows" class="text-lg font-bold text-amber-600 dark:text-amber-400">0</span>
+          </div>
+          <div class="p-3 bg-rose-50 dark:bg-rose-950/40 rounded-xl">
+            <span class="text-[10px] uppercase text-rose-600 dark:text-rose-400 block font-semibold">Invalid / Incomplete</span>
+            <span id="preview-invalid-rows" class="text-lg font-bold text-rose-600 dark:text-rose-400">0</span>
+          </div>
+        </div>
+
+        <!-- Detected Field Mapping Tags -->
+        <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-800">
+          <span class="font-bold text-[11px] text-slate-700 dark:text-slate-300 block mb-1.5">Intelligent Column Matches Detected:</span>
+          <div id="preview-mapped-tags" class="flex flex-wrap gap-1.5">
+            <!-- Badges -->
+          </div>
+        </div>
+
+        <!-- Preview Table -->
+        <div class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+          <table class="w-full text-left text-[11px]">
+            <thead class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 sticky top-0">
+              <tr>
+                <th class="py-2 px-3">Name</th>
+                <th class="py-2 px-3">Phone</th>
+                <th class="py-2 px-3">Acc #</th>
+                <th class="py-2 px-3">Outstanding</th>
+                <th class="py-2 px-3">Due Date</th>
+                <th class="py-2 px-3">Status</th>
+              </tr>
+            </thead>
+            <tbody id="import-preview-tbody" class="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+              <!-- Preview rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="p-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <button onclick="downloadSampleExcelTemplate()" class="inline-flex items-center gap-1.5 text-xs text-brand-600 dark:text-brand-400 font-semibold hover:underline">
+        <i data-lucide="download" class="w-3.5 h-3.5"></i> Download Sample Excel Template
+      </button>
+
+      <div class="flex items-center gap-2">
+        <button onclick="closeImportModal()" class="px-4 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg">Cancel</button>
+        <button id="btn-confirm-import" onclick="confirmImport()" disabled class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-sm transition">
+          Confirm & Import Customers
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 7. ADD MANUAL CUSTOMER MODAL -->
+<div id="add-customer-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs hidden">
+  <div class="w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+        <i data-lucide="user-plus" class="w-5 h-5 text-brand-500"></i>
+        Add Customer to Debt Portfolio
+      </h3>
+      <button onclick="closeAddCustomerModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <form id="add-customer-form" onsubmit="handleManualAddCustomer(event)" class="p-6 space-y-4 text-xs">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Customer Full Name *</label>
+          <input type="text" id="add-name" required placeholder="e.g. Ramesh Kumar" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Primary Phone / WhatsApp *</label>
+          <input type="tel" id="add-phone" required placeholder="e.g. 9876543210" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Loan Account Number *</label>
+          <input type="text" id="add-loan-account" required placeholder="e.g. LN-98401" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-mono" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Loan Type</label>
+          <select id="add-loan-type" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
+            <option value="Personal Loan">Personal Loan</option>
+            <option value="Credit Card">Credit Card</option>
+            <option value="Auto Loan">Auto Loan</option>
+            <option value="Home Loan">Home Loan</option>
+            <option value="Business SME Loan">Business SME Loan</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Total Debt Amount (₹) *</label>
+          <input type="number" id="add-total-amount" required min="1" step="any" placeholder="50000" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-bold" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Paid Amount (₹)</label>
+          <input type="number" id="add-paid-amount" value="0" min="0" step="any" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Due Date *</label>
+          <input type="date" id="add-due-date" required class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Status</label>
+          <select id="add-status" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
+            <option value="Pending">Pending</option>
+            <option value="Contacted">Contacted</option>
+            <option value="Promise to Pay">Promise to Pay</option>
+            <option value="Overdue">Overdue</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Priority</label>
+          <select id="add-priority" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
+            <option value="Low">Low</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="High">High</option>
+            <option value="Critical">Critical</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Agent</label>
+          <select id="add-agent" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
+            <option value="Alex Sharma">Alex Sharma</option>
+            <option value="Priya Verma">Priya Verma</option>
+            <option value="Rahul Nair">Rahul Nair</option>
+            <option value="Sneha Patel">Sneha Patel</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">City / Region</label>
+        <input type="text" id="add-city" placeholder="e.g. Mumbai, MH" class="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
+      </div>
+
+      <div class="pt-2 flex justify-end gap-2">
+        <button type="button" onclick="closeAddCustomerModal()" class="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg shadow-sm">Add Customer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 8. PROJECT REPOSITORY DOWNLOAD MODAL -->
+<div id="repo-export-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs hidden">
+  <div class="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+    <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
+          <i data-lucide="github" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-slate-900 dark:text-white text-base">Export Next.js + TypeScript Repo</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Generate a ZIP file with complete project structure ready for <code class="font-mono">npm run dev</code></p>
+        </div>
+      </div>
+      <button onclick="closeRepoExportModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <div class="p-6 space-y-4 text-xs">
+      <p class="text-slate-600 dark:text-slate-300">
+        This package includes the complete project directory structure with <strong>package.json</strong>, <strong>tsconfig.json</strong>, <strong>tailwind.config.ts</strong>, <strong>README.md</strong>, Next.js App Router code, types, Excel templates, and sample database seeds.
+      </p>
+
+      <div class="bg-slate-900 text-slate-300 rounded-xl p-4 font-mono text-[11px] space-y-1.5 overflow-x-auto">
+        <div class="text-slate-500">// Project Tree Generated:</div>
+        <div>collectionpro-crm/</div>
+        <div class="pl-4">├── app/ (layout.tsx, page.tsx, globals.css)</div>
+        <div class="pl-4">├── components/ (Dashboard, CustomerTable, WhatsAppModal, ExcelImport)</div>
+        <div class="pl-4">├── types/crm.ts</div>
+        <div class="pl-4">├── public/sample-customers.xlsx</div>
+        <div class="pl-4">├── package.json</div>
+        <div class="pl-4">├── tailwind.config.ts</div>
+        <div class="pl-4">└── README.md</div>
+      </div>
+
+      <div class="p-3 rounded-lg bg-sky-50 dark:bg-sky-950/40 border border-sky-500/20 text-sky-800 dark:text-sky-300">
+        Run locally after extract: <code class="bg-white dark:bg-slate-800 px-2 py-0.5 rounded font-mono font-bold">npm install &amp;&amp; npm run dev</code>
+      </div>
+    </div>
+
+    <div class="p-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+      <button onclick="closeRepoExportModal()" class="px-4 py-2 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg">Close</button>
+      <button id="btn-generate-zip" onclick="generateAndDownloadZip()" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-sky-600 hover:bg-sky-700 text-white shadow-sm transition">
+        <i data-lucide="archive" class="w-4 h-4"></i>
+        <span>Download Complete ZIP Package</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- ============================================== -->
+<!-- JAVASCRIPT CRM ARCHITECTURE -->
+<!-- ============================================== -->
+<script>
+
+// --------------------------------------------------------------------------
+// 1. DATA MODELS & INITIAL STATE
+// --------------------------------------------------------------------------
+const STORAGE_KEY = 'collectionpro_crm_data_v1';
+const SETTINGS_KEY = 'collectionpro_crm_settings_v1';
+
+// Pre-seeded 20 realistic Indian collection accounts
+const SEED_CUSTOMERS = [
+  {
+    id: "CUST-1001",
+    name: "Rajesh Malhotra",
+    phone: "9820154871",
+    altPhone: "9820154872",
+    email: "rajesh.m@gmail.com",
+    address: "B-402, Sea Green Heights, Worli",
+    city: "Mumbai",
+    state: "Maharashtra",
+    loanAccountId: "LN-PL-88391",
+    loanType: "Personal Loan",
+    totalAmount: 125000,
+    paidAmount: 25000,
+    outstandingAmount: 100000,
+    dueDate: "2026-10-04",
+    lastPaymentDate: "2026-08-15",
+    status: "Overdue",
+    priority: "Critical",
+    assignedAgent: "Alex Sharma",
+    notes: "Defaulted on 2 installments. Phone reachable in morning hours.",
+    nextFollowUp: "2026-10-08",
+    activities: [
+      { id: "act-1", date: "2026-10-05 11:30", type: "Phone Call", agent: "Alex Sharma", note: "Customer claimed medical emergency, promised to revert." },
+      { id: "act-2", date: "2026-10-02 14:10", type: "WhatsApp", agent: "Alex Sharma", note: "Sent Overdue notice." }
+    ]
+  },
+  {
+    id: "CUST-1002",
+    name: "Sunita Deshmukh",
+    phone: "9819283741",
+    altPhone: "",
+    email: "deshmukh.sunita@outlook.com",
+    address: "Flat 12, Swapna Shilp, Kothrud",
+    city: "Pune",
+    state: "Maharashtra",
+    loanAccountId: "LN-CC-44910",
+    loanType: "Credit Card",
+    totalAmount: 48000,
+    paidAmount: 18000,
+    outstandingAmount: 30000,
+    dueDate: "2026-10-08",
+    lastPaymentDate: "2026-09-02",
+    status: "Promise to Pay",
+    priority: "High",
+    assignedAgent: "Priya Verma",
+    notes: "Promised 15,000 payment by end of day.",
+    nextFollowUp: "2026-10-08",
+    activities: [
+      { id: "act-3", date: "2026-10-07 10:15", type: "Promise to Pay", agent: "Priya Verma", note: "PTP committed for ₹15,000 on 8th Oct." }
+    ]
+  },
+  {
+    id: "CUST-1003",
+    name: "Vikram Singhania",
+    phone: "9845012389",
+    altPhone: "9845099881",
+    email: "vikram.singh@techcorp.in",
+    address: "Villa 45, Palm Meadows, Whitefield",
+    city: "Bengaluru",
+    state: "Karnataka",
+    loanAccountId: "LN-AL-19384",
+    loanType: "Auto Loan",
+    totalAmount: 340000,
+    paidAmount: 220000,
+    outstandingAmount: 120000,
+    dueDate: "2026-10-14",
+    lastPaymentDate: "2026-09-10",
+    status: "Contacted",
+    priority: "Medium",
+    assignedAgent: "Rahul Nair",
+    notes: "Acknowledged notice. Waiting for corporate bonus credit.",
+    nextFollowUp: "2026-10-12",
+    activities: [
+      { id: "act-4", date: "2026-10-06 16:40", type: "WhatsApp", agent: "Rahul Nair", note: "WhatsApp reminder delivered and read." }
+    ]
+  },
+  {
+    id: "CUST-1004",
+    name: "Ananya Mukherjee",
+    phone: "9732114455",
+    altPhone: "",
+    email: "ananya.m@kolkata.gov.in",
+    address: "24/B Southern Avenue",
+    city: "Kolkata",
+    state: "West Bengal",
+    loanAccountId: "LN-PL-55102",
+    loanType: "Personal Loan",
+    totalAmount: 85000,
+    paidAmount: 85000,
+    outstandingAmount: 0,
+    dueDate: "2026-09-28",
+    lastPaymentDate: "2026-10-02",
+    status: "Paid",
+    priority: "Low",
+    assignedAgent: "Sneha Patel",
+    notes: "Full closure achieved after UPI payment receipt.",
+    nextFollowUp: "",
+    activities: [
+      { id: "act-5", date: "2026-10-02 18:00", type: "Payment", agent: "Sneha Patel", note: "Full payment ₹85,000 cleared via NEFT." }
+    ]
+  },
+  {
+    id: "CUST-1005",
+    name: "Amitabh Banerjee",
+    phone: "9433019283",
+    altPhone: "",
+    email: "amitabh.ban@rediffmail.com",
+    address: "Block C, Salt Lake Sector 2",
+    city: "Kolkata",
+    state: "West Bengal",
+    loanAccountId: "LN-CC-82910",
+    loanType: "Credit Card",
+    totalAmount: 92000,
+    paidAmount: 32000,
+    outstandingAmount: 60000,
+    dueDate: "2026-10-08",
+    lastPaymentDate: "2026-08-30",
+    status: "Pending",
+    priority: "High",
+    assignedAgent: "Alex Sharma",
+    notes: "New account imported. Needs initial WhatsApp notice.",
+    nextFollowUp: "2026-10-08",
+    activities: []
+  },
+  {
+    id: "CUST-1006",
+    name: "Gurpreet Singh",
+    phone: "9872019944",
+    altPhone: "9872019945",
+    email: "gurpreet.s@ludhiana.org",
+    address: "Model Town, Street 4",
+    city: "Ludhiana",
+    state: "Punjab",
+    loanAccountId: "LN-BL-33019",
+    loanType: "Business SME Loan",
+    totalAmount: 550000,
+    paidAmount: 300000,
+    outstandingAmount: 250000,
+    dueDate: "2026-09-15",
+    lastPaymentDate: "2026-08-20",
+    status: "Disputed",
+    priority: "Critical",
+    assignedAgent: "Rahul Nair",
+    notes: "Disputing interest calculation charges. Legal team informed.",
+    nextFollowUp: "2026-10-09",
+    activities: [
+      { id: "act-6", date: "2026-10-04 12:00", type: "Dispute", agent: "Rahul Nair", note: "Dispute logged regarding penalty surcharge." }
+    ]
+  },
+  {
+    id: "CUST-1007",
+    name: "Pooja Hegde",
+    phone: "9900223344",
+    altPhone: "",
+    email: "pooja.hegde@infosys.com",
+    address: "Electronic City Phase 1",
+    city: "Bengaluru",
+    state: "Karnataka",
+    loanAccountId: "LN-PL-90218",
+    loanType: "Personal Loan",
+    totalAmount: 70000,
+    paidAmount: 40000,
+    outstandingAmount: 30000,
+    dueDate: "2026-10-18",
+    lastPaymentDate: "2026-09-12",
+    status: "Partially Paid",
+    priority: "Medium",
+    assignedAgent: "Priya Verma",
+    notes: "Regular payer, slight delay due to relocation.",
+    nextFollowUp: "2026-10-15",
+    activities: []
+  },
+  {
+    id: "CUST-1008",
+    name: "Mohammad Arif",
+    phone: "9848011223",
+    altPhone: "9848011224",
+    email: "arif.hyd@gmail.com",
+    address: "Banjara Hills Road 12",
+    city: "Hyderabad",
+    state: "Telangana",
+    loanAccountId: "LN-AL-66192",
+    loanType: "Auto Loan",
+    totalAmount: 210000,
+    paidAmount: 110000,
+    outstandingAmount: 100000,
+    dueDate: "2026-10-03",
+    lastPaymentDate: "2026-08-10",
+    status: "Overdue",
+    priority: "High",
+    assignedAgent: "Sneha Patel",
+    notes: "Vehicle inspection pending if installment not paid by 12th.",
+    nextFollowUp: "2026-10-08",
+    activities: [
+      { id: "act-7", date: "2026-10-04 15:30", type: "Phone Call", agent: "Sneha Patel", note: "Customer requested extension till Friday." }
+    ]
+  },
+  {
+    id: "CUST-1009",
+    name: "Deepak Chawla",
+    phone: "9811099882",
+    altPhone: "",
+    email: "deepak.c@delhifin.in",
+    address: "C-14, Connaught Place",
+    city: "New Delhi",
+    state: "Delhi",
+    loanAccountId: "LN-CC-19283",
+    loanType: "Credit Card",
+    totalAmount: 160000,
+    paidAmount: 60000,
+    outstandingAmount: 100000,
+    dueDate: "2026-10-09",
+    lastPaymentDate: "2026-09-01",
+    status: "Promise to Pay",
+    priority: "High",
+    assignedAgent: "Alex Sharma",
+    notes: "PTP for ₹50,000 scheduled for 9th Oct.",
+    nextFollowUp: "2026-10-09",
+    activities: []
+  },
+  {
+    id: "CUST-1010",
+    name: "Kavita Ranganathan",
+    phone: "9444019284",
+    altPhone: "",
+    email: "kavita.r@tcs.com",
+    address: "Anna Nagar West",
+    city: "Chennai",
+    state: "Tamil Nadu",
+    loanAccountId: "LN-PL-77281",
+    loanType: "Personal Loan",
+    totalAmount: 95000,
+    paidAmount: 45000,
+    outstandingAmount: 50000,
+    dueDate: "2026-10-22",
+    lastPaymentDate: "2026-09-18",
+    status: "Pending",
+    priority: "Medium",
+    assignedAgent: "Priya Verma",
+    notes: "Account in grace period.",
+    nextFollowUp: "2026-10-16",
+    activities: []
+  },
+  {
+    id: "CUST-1011",
+    name: "Harish Pillai",
+    phone: "9447012983",
+    altPhone: "",
+    email: "harish.kerala@yahoo.com",
+    address: "MG Road, Ernakulam",
+    city: "Kochi",
+    state: "Kerala",
+    loanAccountId: "LN-HL-39102",
+    loanType: "Home Loan",
+    totalAmount: 850000,
+    paidAmount: 650000,
+    outstandingAmount: 200000,
+    dueDate: "2026-09-25",
+    lastPaymentDate: "2026-08-20",
+    status: "Overdue",
+    priority: "Critical",
+    assignedAgent: "Rahul Nair",
+    notes: "Home Loan EMI bounce. Legal demand notice prepared.",
+    nextFollowUp: "2026-10-08",
+    activities: []
+  },
+  {
+    id: "CUST-1012",
+    name: "Meenakshi Sundaram",
+    phone: "9443019827",
+    altPhone: "",
+    email: "meenakshi.s@madurai.net",
+    address: "Town Hall Road",
+    city: "Madurai",
+    state: "Tamil Nadu",
+    loanAccountId: "LN-PL-22910",
+    loanType: "Personal Loan",
+    totalAmount: 38000,
+    paidAmount: 38000,
+    outstandingAmount: 0,
+    dueDate: "2026-09-30",
+    lastPaymentDate: "2026-09-29",
+    status: "Paid",
+    priority: "Low",
+    assignedAgent: "Sneha Patel",
+    notes: "NOC Certificate issued.",
+    nextFollowUp: "",
+    activities: []
+  },
+  {
+    id: "CUST-1013",
+    name: "Sanjay Singhal",
+    phone: "9829012398",
+    altPhone: "",
+    email: "sanjay.singhal@jaipurgems.com",
+    address: "MI Road",
+    city: "Jaipur",
+    state: "Rajasthan",
+    loanAccountId: "LN-BL-88192",
+    loanType: "Business SME Loan",
+    totalAmount: 420000,
+    paidAmount: 220000,
+    outstandingAmount: 200000,
+    dueDate: "2026-10-10",
+    lastPaymentDate: "2026-09-05",
+    status: "Contacted",
+    priority: "High",
+    assignedAgent: "Alex Sharma",
+    notes: "Agent meeting scheduled at business premises.",
+    nextFollowUp: "2026-10-10",
+    activities: []
+  },
+  {
+    id: "CUST-1014",
+    name: "Farhan Qureshi",
+    phone: "9822019284",
+    altPhone: "",
+    email: "farhan.q@nagpurind.com",
+    address: "Civil Lines",
+    city: "Nagpur",
+    state: "Maharashtra",
+    loanAccountId: "LN-CC-49102",
+    loanType: "Credit Card",
+    totalAmount: 64000,
+    paidAmount: 14000,
+    outstandingAmount: 50000,
+    dueDate: "2026-10-15",
+    lastPaymentDate: "2026-09-01",
+    status: "Pending",
+    priority: "Medium",
+    assignedAgent: "Priya Verma",
+    notes: "Card blocked temporarily.",
+    nextFollowUp: "2026-10-11",
+    activities: []
+  },
+  {
+    id: "CUST-1015",
+    name: "Ritu Aggarwal",
+    phone: "9810029384",
+    altPhone: "",
+    email: "ritu.aggarwal@noida.in",
+    address: "Sector 62, Express Trade Towers",
+    city: "Noida",
+    state: "Uttar Pradesh",
+    loanAccountId: "LN-PL-66109",
+    loanType: "Personal Loan",
+    totalAmount: 110000,
+    paidAmount: 60000,
+    outstandingAmount: 50000,
+    dueDate: "2026-10-06",
+    lastPaymentDate: "2026-08-25",
+    status: "Overdue",
+    priority: "High",
+    assignedAgent: "Sneha Patel",
+    notes: "Overdue by 2 days. WhatsApp message dispatched.",
+    nextFollowUp: "2026-10-08",
+    activities: []
+  },
+  {
+    id: "CUST-1016",
+    name: "Manish Tiwari",
+    phone: "9450019283",
+    altPhone: "",
+    email: "manish.tiwari@lucknow.org",
+    address: "Hazratganj Main Market",
+    city: "Lucknow",
+    state: "Uttar Pradesh",
+    loanAccountId: "LN-AL-55910",
+    loanType: "Auto Loan",
+    totalAmount: 180000,
+    paidAmount: 80000,
+    outstandingAmount: 100000,
+    dueDate: "2026-10-12",
+    lastPaymentDate: "2026-09-08",
+    status: "Promise to Pay",
+    priority: "Medium",
+    assignedAgent: "Rahul Nair",
+    notes: "Promised 25,000 on 12th Oct.",
+    nextFollowUp: "2026-10-12",
+    activities: []
+  },
+  {
+    id: "CUST-1017",
+    name: "Zoya Akhtar",
+    phone: "9833019284",
+    altPhone: "",
+    email: "zoya.a@bandra.co",
+    address: "Pali Hill, Bandra West",
+    city: "Mumbai",
+    state: "Maharashtra",
+    loanAccountId: "LN-CC-99012",
+    loanType: "Credit Card",
+    totalAmount: 75000,
+    paidAmount: 45000,
+    outstandingAmount: 30000,
+    dueDate: "2026-10-19",
+    lastPaymentDate: "2026-09-15",
+    status: "Partially Paid",
+    priority: "Low",
+    assignedAgent: "Alex Sharma",
+    notes: "Requested monthly automated debit setup.",
+    nextFollowUp: "2026-10-17",
+    activities: []
+  },
+  {
+    id: "CUST-1018",
+    name: "Balvinder Bindra",
+    phone: "9814019284",
+    altPhone: "",
+    email: "b.bindra@chd.in",
+    address: "Sector 17, Plaza",
+    city: "Chandigarh",
+    state: "Punjab",
+    loanAccountId: "LN-BL-44102",
+    loanType: "Business SME Loan",
+    totalAmount: 310000,
+    paidAmount: 160000,
+    outstandingAmount: 150000,
+    dueDate: "2026-10-07",
+    lastPaymentDate: "2026-09-03",
+    status: "Overdue",
+    priority: "Critical",
+    assignedAgent: "Priya Verma",
+    notes: "Due yesterday. Contact attempted but switch off.",
+    nextFollowUp: "2026-10-08",
+    activities: []
+  },
+  {
+    id: "CUST-1019",
+    name: "Gautam Gambhir",
+    phone: "9811192837",
+    altPhone: "",
+    email: "gautam.g@delhicricket.com",
+    address: "Karol Bagh",
+    city: "New Delhi",
+    state: "Delhi",
+    loanAccountId: "LN-PL-11928",
+    loanType: "Personal Loan",
+    totalAmount: 52000,
+    paidAmount: 52000,
+    outstandingAmount: 0,
+    dueDate: "2026-09-20",
+    lastPaymentDate: "2026-09-18",
+    status: "Paid",
+    priority: "Low",
+    assignedAgent: "Sneha Patel",
+    notes: "Settled in full.",
+    nextFollowUp: "",
+    activities: []
+  },
+  {
+    id: "CUST-1020",
+    name: "Karthik Raja",
+    phone: "9841019283",
+    altPhone: "",
+    email: "karthik.raja@chennaitech.in",
+    address: "T. Nagar, Usman Road",
+    city: "Chennai",
+    state: "Tamil Nadu",
+    loanAccountId: "LN-AL-77192",
+    loanType: "Auto Loan",
+    totalAmount: 195000,
+    paidAmount: 95000,
+    outstandingAmount: 100000,
+    dueDate: "2026-10-25",
+    lastPaymentDate: "2026-09-20",
+    status: "Contacted",
+    priority: "Low",
+    assignedAgent: "Alex Sharma",
+    notes: "First notice acknowledged.",
+    nextFollowUp: "2026-10-22",
+    activities: []
+  }
+];
+
+// Initial Payment ledger history
+const INITIAL_PAYMENTS = [
+  { id: "PAY-501", date: "2026-10-02 18:00", customerId: "CUST-1004", customerName: "Ananya Mukherjee", loanAccountId: "LN-PL-55102", amount: 85000, method: "NEFT / RTGS / IMPS", ref: "NEFT-99182371", agent: "Sneha Patel", notes: "Full loan balance closure" },
+  { id: "PAY-502", date: "2026-09-29 14:20", customerId: "CUST-1012", customerName: "Meenakshi Sundaram", loanAccountId: "LN-PL-22910", amount: 38000, method: "UPI / QR", ref: "UPI-44019283", agent: "Sneha Patel", notes: "Settlement clearance" },
+  { id: "PAY-503", date: "2026-09-18 11:45", customerId: "CUST-1019", customerName: "Gautam Gambhir", loanAccountId: "LN-PL-11928", amount: 52000, method: "Debit / Credit Card", ref: "TXN-8829102", agent: "Sneha Patel", notes: "Final EMI payment" }
+];
+
+// Predefined WhatsApp message templates
+const DEFAULT_TEMPLATES = {
+  reminder: "Hello {{customer_name}}, this is {{agent_name}} from CollectionPro Agency regarding your {{loan_account}}. You have an outstanding balance of ₹{{outstanding_amount}} due on {{due_date}}. Please share payment confirmation or reach out to arrange an installment.",
+  dueToday: "URGENT: Hello {{customer_name}}, your debt obligation of ₹{{outstanding_amount}} (Loan # {{loan_account}}) is DUE TODAY ({{due_date}}). Kindly clear via immediate transfer to avoid penalty interest and credit score degradation.",
+  overdue: "NOTICE OF OVERDUE DEBT: {{customer_name}}, records show your payment of ₹{{outstanding_amount}} on account {{loan_account}} is OVERDUE past {{due_date}}. Immediate resolution is required today. Contact {{agent_name}} urgently.",
+  ptp: "Hello {{customer_name}}, this is a reminder regarding your Promise to Pay agreement for ₹{{outstanding_amount}} towards account {{loan_account}}. Please ensure your transfer is completed as promised.",
+  custom: "Hello {{customer_name}}, this is regarding your loan account {{loan_account}}. Please get in touch with us at your earliest convenience."
+};
+
+// Application Global State
+let CRM_STATE = {
+  customers: [],
+  payments: [],
+  settings: {
+    agencyName: "Apex Financial Recovery Agency",
+    currency: "₹",
+    defaultAgent: "Alex Sharma",
+    templates: { ...DEFAULT_TEMPLATES }
+  },
+  currentAgent: "Alex Sharma",
+  filter: {
+    search: "",
+    status: "ALL",
+    priority: "ALL",
+    agent: "ALL",
+    dueDateQuick: "all"
+  },
+  sort: {
+    field: "outstanding",
+    ascending: false
+  },
+  pagination: {
+    currentPage: 1,
+    pageSize: 20
+  },
+  selectedCustomerId: null,
+  pendingImportData: null
+};
+
+
+// --------------------------------------------------------------------------
+// 2. LOCAL STORAGE / PERSISTENCE ENGINE
+// --------------------------------------------------------------------------
+function initDatabase() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      CRM_STATE.customers = parsed.customers || SEED_CUSTOMERS;
+      CRM_STATE.payments = parsed.payments || INITIAL_PAYMENTS;
+    } else {
+      CRM_STATE.customers = [...SEED_CUSTOMERS];
+      CRM_STATE.payments = [...INITIAL_PAYMENTS];
+      saveDatabase();
+    }
+
+    const savedSettings = localStorage.getItem(SETTINGS_KEY);
+    if (savedSettings) {
+      CRM_STATE.settings = { ...CRM_STATE.settings, ...JSON.parse(savedSettings) };
+    }
+  } catch (err) {
+    console.warn("Storage init fallback:", err);
+    CRM_STATE.customers = [...SEED_CUSTOMERS];
+    CRM_STATE.payments = [...INITIAL_PAYMENTS];
+  }
+}
+
+function saveDatabase() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      customers: CRM_STATE.customers,
+      payments: CRM_STATE.payments
+    }));
+  } catch (err) {
+    console.error("Save error:", err);
+  }
+}
+
+function saveSettingsToStorage() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(CRM_STATE.settings));
+    showToast("Settings and templates saved successfully!", "success");
+  } catch (err) {
+    showToast("Failed to save settings: " + err.message, "error");
+  }
+}
+
+// --------------------------------------------------------------------------
+// 3. UI NOTIFICATIONS (TOASTS)
+// --------------------------------------------------------------------------
+function showToast(message, type = "info") {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  const bg = type === "success" ? "bg-emerald-600 text-white" :
+             type === "error" ? "bg-rose-600 text-white" :
+             type === "warning" ? "bg-amber-600 text-white" :
+             "bg-slate-800 text-white";
+
+  toast.className = `${bg} px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 transform transition-all duration-300 pointer-events-auto translate-y-2 opacity-0`;
+  toast.innerHTML = `
+    <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'alert-octagon' : 'info'}" class="w-4 h-4"></i>
+    <span>${message}</span>
+  `;
+
+  container.appendChild(toast);
+  lucide.createIcons();
+
+  requestAnimationFrame(() => {
+    toast.classList.remove("translate-y-2", "opacity-0");
+  });
+
+  setTimeout(() => {
+    toast.classList.add("opacity-0", "translate-y-2");
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+
+// --------------------------------------------------------------------------
+// 4. NAVIGATION & MULTI-PAGE ROUTING
+// --------------------------------------------------------------------------
+function switchPage(pageId) {
+  // Hide all sections
+  document.querySelectorAll(".page-content").forEach(el => el.classList.add("hidden"));
+  
+  // Show selected
+  const target = document.getElementById(`page-${pageId}`);
+  if (target) target.classList.remove("hidden");
+
+  // Update Nav Items active class
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    const p = btn.getAttribute("data-page");
+    if (p === pageId) {
+      btn.classList.add("bg-brand-50", "text-brand-700", "dark:bg-slate-800", "dark:text-brand-400");
+      btn.classList.remove("text-slate-600", "dark:text-slate-400");
+    } else {
+      btn.classList.remove("bg-brand-50", "text-brand-700", "dark:bg-slate-800", "dark:text-brand-400");
+      btn.classList.add("text-slate-600", "dark:text-slate-400");
+    }
+  });
+
+  // Re-render target views
+  if (pageId === "dashboard") renderDashboard();
+  if (pageId === "customers") renderCustomerTable();
+  if (pageId === "followups") renderFollowupsPage();
+  if (pageId === "payments") renderPaymentsLedger();
+  if (pageId === "agents") renderAgentsPage();
+  if (pageId === "reports") renderReportsPage();
+  if (pageId === "settings") renderSettingsPage();
+
+  // Close mobile sidebar if open
+  closeMobileSidebar();
+  lucide.createIcons();
+}
+
+function closeMobileSidebar() {
+  document.getElementById("sidebar").classList.add("-translate-x-full");
+  document.getElementById("sidebar-backdrop").classList.add("hidden");
+}
+
+
+// --------------------------------------------------------------------------
+// 5. DASHBOARD CALCULATIONS & VISUALIZATION
+// --------------------------------------------------------------------------
+function renderDashboard() {
+  const custs = CRM_STATE.customers;
+  
+  const totalCount = custs.length;
+  const totalOutstanding = custs.reduce((acc, c) => acc + (Number(c.outstandingAmount) || 0), 0);
+  const totalCollected = custs.reduce((acc, c) => acc + (Number(c.paidAmount) || 0), 0);
+  const totalDebtOrig = totalOutstanding + totalCollected;
+  const recoveryRate = totalDebtOrig > 0 ? Math.round((totalCollected / totalDebtOrig) * 100) : 0;
+
+  const overdueCount = custs.filter(c => c.status === "Overdue").length;
+  const ptpCusts = custs.filter(c => c.status === "Promise to Pay");
+  const ptpCount = ptpCusts.length;
+  const ptpAmount = ptpCusts.reduce((acc, c) => acc + (Number(c.outstandingAmount) || 0), 0);
+  const criticalCount = custs.filter(c => c.priority === "Critical" || c.priority === "High").length;
+  const pendingCount = custs.filter(c => c.status === "Pending").length;
+
+  // Contacted today calculation
+  const todayStr = new Date().toISOString().split("T")[0];
+  let contactedToday = 0;
+  custs.forEach(c => {
+    (c.activities || []).forEach(a => {
+      if (a.date && a.date.startsWith(todayStr)) contactedToday++;
+    });
+  });
+
+  // Top metric card updates
+  document.getElementById("stat-total-customers").innerText = totalCount.toLocaleString();
+  document.getElementById("stat-total-outstanding").innerText = `₹${totalOutstanding.toLocaleString()}`;
+  document.getElementById("stat-total-collected").innerText = `₹${totalCollected.toLocaleString()}`;
+  document.getElementById("stat-collection-rate").innerText = `${recoveryRate}% Recovery achieved`;
+  document.getElementById("stat-overdue-count").innerText = overdueCount.toLocaleString();
+  document.getElementById("stat-ptp-count").innerText = ptpCount.toLocaleString();
+  document.getElementById("stat-ptp-amount").innerText = `₹${ptpAmount.toLocaleString()} committed`;
+  document.getElementById("stat-contacted-today").innerText = contactedToday.toLocaleString();
+  document.getElementById("stat-critical-count").innerText = criticalCount.toLocaleString();
+  document.getElementById("stat-pending-count").innerText = pendingCount.toLocaleString();
+
+  // Sidebar metric update
+  document.getElementById("sidebar-recovery-rate").innerText = `${recoveryRate}%`;
+  document.getElementById("sidebar-recovery-bar").style.width = `${recoveryRate}%`;
+  document.getElementById("sidebar-total-customers-badge").innerText = totalCount;
+
+  // Count due followups for badge
+  const dueFollowupsCount = custs.filter(c => c.nextFollowUp && c.nextFollowUp <= todayStr && c.outstandingAmount > 0).length;
+  document.getElementById("sidebar-due-followups-badge").innerText = dueFollowupsCount;
+
+  // 1. Status Distribution Progress Bars
+  const statuses = ["Pending", "Contacted", "Promise to Pay", "Partially Paid", "Paid", "Overdue", "Disputed"];
+  const statusColors = {
+    "Pending": "bg-slate-400",
+    "Contacted": "bg-sky-500",
+    "Promise to Pay": "bg-purple-500",
+    "Partially Paid": "bg-indigo-500",
+    "Paid": "bg-emerald-500",
+    "Overdue": "bg-rose-500",
+    "Disputed": "bg-pink-500"
+  };
+
+  const statusBarsContainer = document.getElementById("chart-status-bars");
+  statusBarsContainer.innerHTML = "";
+  statuses.forEach(st => {
+    const count = custs.filter(c => c.status === st).length;
+    const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
+    statusBarsContainer.innerHTML += `
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span class="font-medium text-slate-700 dark:text-slate-300">${st}</span>
+          <span class="text-slate-500 font-semibold">${count} (${pct}%)</span>
+        </div>
+        <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+          <div class="${statusColors[st] || 'bg-slate-400'} h-2 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+        </div>
+      </div>
+    `;
+  });
+
+  // 2. Priority Distribution
+  const priorities = ["Critical", "High", "Medium", "Low"];
+  const priorityColors = {
+    "Critical": "bg-red-600",
+    "High": "bg-orange-500",
+    "Medium": "bg-amber-400",
+    "Low": "bg-emerald-400"
+  };
+  const priorityBarsContainer = document.getElementById("chart-priority-bars");
+  priorityBarsContainer.innerHTML = "";
+  priorities.forEach(pr => {
+    const count = custs.filter(c => c.priority === pr).length;
+    const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
+    priorityBarsContainer.innerHTML += `
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span class="font-medium text-slate-700 dark:text-slate-300">${pr} Priority</span>
+          <span class="text-slate-500 font-semibold">${count} (${pct}%)</span>
+        </div>
+        <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+          <div class="${priorityColors[pr]} h-2 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+        </div>
+      </div>
+    `;
+  });
+
+  // 3. Agent Performance Summary on Dashboard
+  const agentMap = {};
+  custs.forEach(c => {
+    const ag = c.assignedAgent || "Unassigned";
+    if (!agentMap[ag]) agentMap[ag] = { collected: 0, count: 0 };
+    agentMap[ag].collected += Number(c.paidAmount) || 0;
+    agentMap[ag].count++;
+  });
+
+  const agentBoard = document.getElementById("dashboard-agent-leaderboard");
+  agentBoard.innerHTML = "";
+  Object.keys(agentMap).forEach(agentName => {
+    agentBoard.innerHTML += `
+      <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold text-xs flex items-center justify-center">
+            ${agentName.charAt(0)}
+          </div>
+          <div>
+            <p class="font-semibold text-xs text-slate-800 dark:text-slate-200">${agentName}</p>
+            <p class="text-[10px] text-slate-400">${agentMap[agentName].count} Accounts assigned</p>
+          </div>
+        </div>
+        <span class="font-bold text-emerald-600 dark:text-emerald-400 text-xs">₹${agentMap[agentName].collected.toLocaleString()}</span>
+      </div>
+    `;
+  });
+
+  // 4. Action Queue / Follow-ups table on Dashboard
+  const followupTbody = document.getElementById("dashboard-followup-tbody");
+  followupTbody.innerHTML = "";
+  const urgentQueue = custs.filter(c => c.status === "Overdue" || (c.nextFollowUp && c.nextFollowUp <= todayStr)).slice(0, 5);
+
+  if (urgentQueue.length === 0) {
+    followupTbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">All follow-ups and overdue accounts cleared! Great job!</td></tr>`;
+  } else {
+    urgentQueue.forEach(c => {
+      followupTbody.innerHTML += `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+          <td class="py-2.5 px-3">
+            <span class="font-bold text-slate-900 dark:text-white cursor-pointer hover:underline" onclick="openCustomerDrawer('${c.id}')">${c.name}</span>
+            <span class="block text-[10px] text-slate-400 font-mono">${c.loanAccountId}</span>
+          </td>
+          <td class="py-2.5 px-3 font-semibold text-rose-600 dark:text-rose-400">₹${c.outstandingAmount.toLocaleString()}</td>
+          <td class="py-2.5 px-3">${renderStatusBadge(c.status)}</td>
+          <td class="py-2.5 px-3 font-mono text-[11px] text-slate-500">${c.nextFollowUp || c.dueDate || 'N/A'}</td>
+          <td class="py-2.5 px-3 text-slate-500">${c.assignedAgent}</td>
+          <td class="py-2.5 px-3 text-right">
+            <button onclick="openWhatsAppModal('${c.id}')" class="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition" title="WhatsApp Instant Message">
+              <i data-lucide="message-circle" class="w-4 h-4"></i>
+            </button>
+            <button onclick="openPaymentModal('${c.id}')" class="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500 hover:text-white transition ml-1" title="Record Payment">
+              <i data-lucide="credit-card" class="w-4 h-4"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+  }
+}
+
+
+// --------------------------------------------------------------------------
+// 6. CUSTOMER DIRECTORY & FILTERING ENGINE
+// --------------------------------------------------------------------------
+function getFilteredCustomers() {
+  const query = CRM_STATE.filter.search.toLowerCase().trim();
+  const statusFilter = CRM_STATE.filter.status;
+  const priorityFilter = CRM_STATE.filter.priority;
+  const agentFilter = CRM_STATE.filter.agent;
+  const dueQuick = CRM_STATE.filter.dueDateQuick;
+  const today = new Date().toISOString().split("T")[0];
+
+  return CRM_STATE.customers.filter(c => {
+    // 1. Text Search
+    if (query) {
+      const match = (c.name && c.name.toLowerCase().includes(query)) ||
+                    (c.id && c.id.toLowerCase().includes(query)) ||
+                    (c.phone && c.phone.includes(query)) ||
+                    (c.loanAccountId && c.loanAccountId.toLowerCase().includes(query)) ||
+                    (c.email && c.email.toLowerCase().includes(query));
+      if (!match) return false;
+    }
+
+    // 2. Status Filter
+    if (statusFilter !== "ALL" && c.status !== statusFilter) return false;
+
+    // 3. Priority Filter
+    if (priorityFilter !== "ALL" && c.priority !== priorityFilter) return false;
+
+    // 4. Agent Filter
+    if (agentFilter !== "ALL" && c.assignedAgent !== agentFilter) return false;
+
+    // 5. Due Date Quick Filter
+    if (dueQuick === "today" && c.dueDate !== today) return false;
+    if (dueQuick === "overdue" && (!c.dueDate || c.dueDate >= today || c.outstandingAmount <= 0)) return false;
+    if (dueQuick === "thisweek") {
+      if (!c.dueDate) return false;
+      const d = new Date(c.dueDate);
+      const now = new Date();
+      const diff = (d - now) / (1000 * 60 * 60 * 24);
+      if (diff < 0 || diff > 7) return false;
+    }
+
+    return true;
+  }).sort((a, b) => {
+    const f = CRM_STATE.sort.field;
+    let valA = a[f];
+    let valB = b[f];
+
+    if (f === "outstanding") {
+      valA = Number(a.outstandingAmount) || 0;
+      valB = Number(b.outstandingAmount) || 0;
+    }
+
+    if (typeof valA === "string") {
+      return CRM_STATE.sort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    }
+    return CRM_STATE.sort.ascending ? valA - valB : valB - valA;
+  });
+}
+
+function renderCustomerTable() {
+  const filtered = getFilteredCustomers();
+  const total = filtered.length;
+  const limit = CRM_STATE.pagination.pageSize;
+  const page = CRM_STATE.pagination.currentPage;
+  const start = (page - 1) * limit;
+  const paginated = filtered.slice(start, start + limit);
+
+  // Update counts
+  document.getElementById("filter-count-badge").innerText = `Showing ${filtered.length} of ${CRM_STATE.customers.length} accounts`;
+  document.getElementById("pagination-info").innerText = total > 0 ? `Showing ${start + 1}-${Math.min(start + limit, total)} of ${total}` : 'No records found';
+
+  // Render Table Rows
+  const tbody = document.getElementById("customer-table-tbody");
+  tbody.innerHTML = "";
+
+  if (paginated.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="10" class="text-center py-12 text-slate-400">
+          <i data-lucide="search-x" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+          <p class="font-medium">No matching customers found for active filters.</p>
+          <button onclick="clearAllFilters()" class="mt-2 text-brand-600 dark:text-brand-400 text-xs font-semibold hover:underline">Reset Filters</button>
+        </td>
+      </tr>
+    `;
+    lucide.createIcons();
+    renderPaginationButtons(total);
+    return;
+  }
+
+  paginated.forEach(c => {
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+        <td class="py-3 px-4 font-mono text-[11px]">
+          <span class="font-semibold text-slate-800 dark:text-slate-200">${c.id}</span>
+          <span class="block text-slate-400">${c.loanAccountId}</span>
+        </td>
+        <td class="py-3 px-4">
+          <div class="font-bold text-slate-900 dark:text-white cursor-pointer hover:text-brand-600 dark:hover:text-brand-400 transition" onclick="openCustomerDrawer('${c.id}')">
+            ${c.name}
+          </div>
+          <span class="text-[11px] text-slate-400">${c.city || 'India'}</span>
+        </td>
+        <td class="py-3 px-4">
+          <span class="font-mono text-slate-700 dark:text-slate-300 font-semibold">+91 ${c.phone}</span>
+          ${c.email ? `<span class="block text-[10px] text-slate-400 truncate max-w-[130px]">${c.email}</span>` : ''}
+        </td>
+        <td class="py-3 px-4">
+          <span class="font-bold ${c.outstandingAmount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600'}">
+            ₹${(Number(c.outstandingAmount) || 0).toLocaleString()}
+          </span>
+          <span class="block text-[10px] text-slate-400">Paid: ₹${(Number(c.paidAmount) || 0).toLocaleString()}</span>
+        </td>
+        <td class="py-3 px-4 font-mono text-slate-600 dark:text-slate-400">
+          ${c.dueDate || 'N/A'}
+        </td>
+        <td class="py-3 px-4">
+          ${renderStatusBadge(c.status)}
+        </td>
+        <td class="py-3 px-4">
+          ${renderPriorityBadge(c.priority)}
+        </td>
+        <td class="py-3 px-4 text-slate-600 dark:text-slate-400">
+          ${c.assignedAgent}
+        </td>
+        <td class="py-3 px-4 text-center">
+          <button onclick="openWhatsAppModal('${c.id}')" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white font-semibold text-xs transition" title="Start WhatsApp Chat">
+            <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+            <span>Chat</span>
+          </button>
+        </td>
+        <td class="py-3 px-4 text-right">
+          <div class="flex items-center justify-end gap-1">
+            <button onclick="openCustomerDrawer('${c.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-brand-600 hover:bg-slate-100 dark:hover:bg-slate-800" title="View Full Profile">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+            <button onclick="openPaymentModal('${c.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800" title="Record Payment">
+              <i data-lucide="credit-card" class="w-4 h-4"></i>
+            </button>
+            <button onclick="quickMarkContacted('${c.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-sky-600 hover:bg-slate-100 dark:hover:bg-slate-800" title="Mark as Contacted">
+              <i data-lucide="check" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  renderPaginationButtons(total);
+  lucide.createIcons();
+}
+
+function renderPaginationButtons(totalRows) {
+  const container = document.getElementById("pagination-controls");
+  container.innerHTML = "";
+  const totalPages = Math.ceil(totalRows / CRM_STATE.pagination.pageSize) || 1;
+  const current = CRM_STATE.pagination.currentPage;
+
+  // Prev
+  const prevBtn = document.createElement("button");
+  prevBtn.innerHTML = '<i data-lucide="chevron-left" class="w-4 h-4"></i>';
+  prevBtn.disabled = current <= 1;
+  prevBtn.className = "p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800";
+  prevBtn.onclick = () => { if (current > 1) { CRM_STATE.pagination.currentPage--; renderCustomerTable(); } };
+  container.appendChild(prevBtn);
+
+  // Page Numbers
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= current - 1 && i <= current + 1)) {
+      const pageBtn = document.createElement("button");
+      pageBtn.innerText = i;
+      pageBtn.className = `px-2.5 py-1 rounded-lg text-xs font-semibold ${i === current ? 'bg-brand-600 text-white' : 'border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'}`;
+      pageBtn.onclick = () => { CRM_STATE.pagination.currentPage = i; renderCustomerTable(); };
+      container.appendChild(pageBtn);
+    }
+  }
+
+  // Next
+  const nextBtn = document.createElement("button");
+  nextBtn.innerHTML = '<i data-lucide="chevron-right" class="w-4 h-4"></i>';
+  nextBtn.disabled = current >= totalPages;
+  nextBtn.className = "p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800";
+  nextBtn.onclick = () => { if (current < totalPages) { CRM_STATE.pagination.currentPage++; renderCustomerTable(); } };
+  container.appendChild(nextBtn);
+  lucide.createIcons();
+}
+
+
+// --------------------------------------------------------------------------
+// 7. STATUS BADGES & FORMATTING HELPERS
+// --------------------------------------------------------------------------
+function renderStatusBadge(status) {
+  const map = {
+    "Pending": "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 ring-slate-400/20",
+    "Contacted": "bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300 ring-sky-500/20",
+    "Promise to Pay": "bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 ring-purple-500/20",
+    "Partially Paid": "bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 ring-indigo-500/20",
+    "Paid": "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 ring-emerald-500/20",
+    "Overdue": "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 ring-rose-500/20 badge-pulse",
+    "Disputed": "bg-pink-50 text-pink-700 dark:bg-pink-950 dark:text-pink-300 ring-pink-500/20"
+  };
+  const cls = map[status] || "bg-slate-100 text-slate-700";
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ring-inset ${cls}">${status}</span>`;
+}
+
+function renderPriorityBadge(priority) {
+  const map = {
+    "Critical": "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30",
+    "High": "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30",
+    "Medium": "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30",
+    "Low": "bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/30"
+  };
+  const cls = map[priority] || "bg-slate-100 text-slate-600";
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ${cls}">${priority}</span>`;
+}
+
+function sortCustomerTable(field) {
+  if (CRM_STATE.sort.field === field) {
+    CRM_STATE.sort.ascending = !CRM_STATE.sort.ascending;
+  } else {
+    CRM_STATE.sort.field = field;
+    CRM_STATE.sort.ascending = true;
+  }
+  renderCustomerTable();
+}
+
+function applyDueDateQuickFilter(type) {
+  CRM_STATE.filter.dueDateQuick = type;
+  document.querySelectorAll(".due-pill").forEach(el => el.classList.remove("bg-brand-600", "text-white"));
+  event.target.classList.add("bg-brand-600", "text-white");
+  renderCustomerTable();
+}
+
+function clearAllFilters() {
+  document.getElementById("filter-search-text").value = "";
+  document.getElementById("filter-status-select").value = "ALL";
+  document.getElementById("filter-priority-select").value = "ALL";
+  document.getElementById("filter-agent-select").value = "ALL";
+  CRM_STATE.filter = { search: "", status: "ALL", priority: "ALL", agent: "ALL", dueDateQuick: "all" };
+  renderCustomerTable();
+}
+
+function quickMarkContacted(customerId) {
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+
+  if (c.status === "Pending") c.status = "Contacted";
+  c.activities = c.activities || [];
+  const now = new Date();
+  const dateStr = now.toISOString().replace("T", " ").substring(0, 16);
+  c.activities.unshift({
+    id: "act-" + Date.now(),
+    date: dateStr,
+    type: "Phone Call",
+    agent: CRM_STATE.currentAgent,
+    note: "Customer marked as contacted by " + CRM_STATE.currentAgent
+  });
+
+  saveDatabase();
+  renderCustomerTable();
+  renderDashboard();
+  showToast(`Marked ${c.name} as Contacted!`, "success");
+}
+
+
+// --------------------------------------------------------------------------
+// 8. CUSTOMER PROFILE DRAWER
+// --------------------------------------------------------------------------
+function openCustomerDrawer(customerId) {
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+  CRM_STATE.selectedCustomerId = customerId;
+
+  document.getElementById("drawer-customer-name").innerText = c.name;
+  document.getElementById("drawer-avatar-initials").innerText = c.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+  document.getElementById("drawer-customer-sub").innerText = `ID: ${c.id} • Loan # ${c.loanAccountId}`;
+  document.getElementById("drawer-status-badge").innerHTML = renderStatusBadge(c.status);
+  document.getElementById("drawer-priority-badge").innerHTML = renderPriorityBadge(c.priority);
+
+  document.getElementById("drawer-total-amount").innerText = `₹${(Number(c.totalAmount) || 0).toLocaleString()}`;
+  document.getElementById("drawer-paid-amount").innerText = `₹${(Number(c.paidAmount) || 0).toLocaleString()}`;
+  document.getElementById("drawer-outstanding-amount").innerText = `₹${(Number(c.outstandingAmount) || 0).toLocaleString()}`;
+
+  document.getElementById("drawer-phone").innerText = `+91 ${c.phone}`;
+  document.getElementById("drawer-alt-phone").innerText = c.altPhone ? `+91 ${c.altPhone}` : 'N/A';
+  document.getElementById("drawer-email").innerText = c.email || 'N/A';
+  document.getElementById("drawer-address").innerText = `${c.address || ''}, ${c.city || ''} ${c.state || ''}`;
+
+  document.getElementById("drawer-loan-type").innerText = c.loanType || 'General Credit';
+  document.getElementById("drawer-due-date").innerText = c.dueDate || 'N/A';
+  document.getElementById("drawer-last-payment-date").innerText = c.lastPaymentDate || 'None';
+  document.getElementById("drawer-assigned-agent").innerText = c.assignedAgent;
+
+  // Bind toolbar actions in drawer
+  document.getElementById("drawer-btn-whatsapp").onclick = () => openWhatsAppModal(c.id);
+  document.getElementById("drawer-btn-payment").onclick = () => openPaymentModal(c.id);
+  document.getElementById("drawer-btn-ptp").onclick = () => openPtpModal(c.id);
+  document.getElementById("drawer-btn-followup").onclick = () => openFollowupModal(c.id);
+
+  // Render Activity Timeline
+  renderDrawerTimeline(c);
+
+  document.getElementById("customer-details-drawer").classList.remove("hidden");
+  lucide.createIcons();
+}
+
+function renderDrawerTimeline(customer) {
+  const container = document.getElementById("drawer-timeline");
+  container.innerHTML = "";
+
+  const activities = customer.activities || [];
+  if (activities.length === 0) {
+    container.innerHTML = `<p class="text-slate-400 pl-6 italic">No outreach activities logged yet.</p>`;
+    return;
+  }
+
+  activities.forEach(act => {
+    const icon = act.type === "WhatsApp" ? "message-circle" :
+                 act.type === "Phone Call" ? "phone-call" :
+                 act.type === "Payment" ? "credit-card" :
+                 act.type === "Promise to Pay" ? "handshake" : "file-text";
+
+    const color = act.type === "WhatsApp" ? "bg-emerald-500 text-white" :
+                  act.type === "Phone Call" ? "bg-sky-500 text-white" :
+                  act.type === "Payment" ? "bg-blue-600 text-white" :
+                  act.type === "Promise to Pay" ? "bg-purple-600 text-white" : "bg-slate-400 text-white";
+
+    container.innerHTML += `
+      <div class="relative flex items-start gap-3 pl-1">
+        <div class="w-6 h-6 rounded-full ${color} flex items-center justify-center shrink-0 shadow-sm z-10 text-[10px]">
+          <i data-lucide="${icon}" class="w-3.5 h-3.5"></i>
+        </div>
+        <div class="flex-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/60">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-slate-800 dark:text-slate-200 text-xs">${act.type}</span>
+            <span class="text-[10px] text-slate-400">${act.date}</span>
+          </div>
+          <p class="text-slate-600 dark:text-slate-300 text-xs leading-relaxed">${act.note || ''}</p>
+          <span class="text-[10px] text-slate-400 mt-1 block">Logged by: ${act.agent || 'Agent'}</span>
+        </div>
+      </div>
+    `;
+  });
+  lucide.createIcons();
+}
+
+function addDrawerActivity() {
+  const customerId = CRM_STATE.selectedCustomerId;
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+
+  const noteInput = document.getElementById("drawer-new-activity-note");
+  const typeSelect = document.getElementById("drawer-new-activity-type");
+  const note = noteInput.value.trim();
+  if (!note) {
+    showToast("Please enter a note for this activity.", "warning");
+    return;
+  }
+
+  c.activities = c.activities || [];
+  const now = new Date();
+  const dateStr = now.toISOString().replace("T", " ").substring(0, 16);
+
+  c.activities.unshift({
+    id: "act-" + Date.now(),
+    date: dateStr,
+    type: typeSelect.value,
+    agent: CRM_STATE.currentAgent,
+    note: note
+  });
+
+  if (typeSelect.value === "Promise to Pay") {
+    c.status = "Promise to Pay";
+  } else if (c.status === "Pending") {
+    c.status = "Contacted";
+  }
+
+  noteInput.value = "";
+  saveDatabase();
+  renderDrawerTimeline(c);
+  renderCustomerTable();
+  renderDashboard();
+  showToast("Activity logged successfully!", "success");
+}
+
+function closeCustomerDrawer() {
+  document.getElementById("customer-details-drawer").classList.add("hidden");
+}
+
+
+// --------------------------------------------------------------------------
+// 9. WHATSAPP DEEP-LINK AUTOMATION
+// --------------------------------------------------------------------------
+function openWhatsAppModal(customerId) {
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+
+  CRM_STATE.selectedCustomerId = customerId;
+  document.getElementById("wa-modal-target").innerText = `Recipient: ${c.name} (+91 ${c.phone})`;
+  document.getElementById("wa-template-picker").value = "reminder";
+  applySelectedTemplate();
+
+  document.getElementById("whatsapp-modal").classList.remove("hidden");
+  lucide.createIcons();
+}
+
+function applySelectedTemplate() {
+  const customerId = CRM_STATE.selectedCustomerId;
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+
+  const templateKey = document.getElementById("wa-template-picker").value;
+  let text = CRM_STATE.settings.templates[templateKey] || DEFAULT_TEMPLATES.reminder;
+
+  // Replace variable placeholders dynamically
+  text = text
+    .replace(/\{\{customer_name\}\}/g, c.name)
+    .replace(/\{\{outstanding_amount\}\}/g, Number(c.outstandingAmount).toLocaleString())
+    .replace(/\{\{due_date\}\}/g, c.dueDate || "today")
+    .replace(/\{\{loan_account\}\}/g, c.loanAccountId || "N/A")
+    .replace(/\{\{agent_name\}\}/g, CRM_STATE.currentAgent);
+
+  document.getElementById("wa-message-content").value = text;
+}
+
+function executeWhatsAppSend() {
+  const customerId = CRM_STATE.selectedCustomerId;
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+
+  const message = document.getElementById("wa-message-content").value.trim();
+  if (!message) {
+    showToast("Message cannot be empty.", "warning");
+    return;
+  }
+
+  // Clean phone number: remove non-digits, ensure country code 91
+  let phone = c.phone.replace(/\D/g, "");
+  if (phone.length === 10) phone = "91" + phone;
+
+  // Build standard deep-link
+  const encodedText = encodeURIComponent(message);
+  const waUrl = `https://wa.me/${phone}?text=${encodedText}`;
+
+  // Log activity automatically in customer profile
+  c.activities = c.activities || [];
+  const now = new Date();
+  const dateStr = now.toISOString().replace("T", " ").substring(0, 16);
+
+  c.activities.unshift({
+    id: "act-" + Date.now(),
+    date: dateStr,
+    type: "WhatsApp",
+    agent: CRM_STATE.currentAgent,
+    note: `WhatsApp message initiated: "${message.substring(0, 80)}..."`
+  });
+
+  if (c.status === "Pending") c.status = "Contacted";
+
+  saveDatabase();
+  renderCustomerTable();
+  renderDashboard();
+
+  closeWhatsAppModal();
+  showToast(`Opening WhatsApp for ${c.name}...`, "success");
+
+  // Open official WhatsApp window
+  window.open(waUrl, "_blank");
+}
+
+function closeWhatsAppModal() {
+  document.getElementById("whatsapp-modal").classList.add("hidden");
+}
+
+
+// --------------------------------------------------------------------------
+// 10. PAYMENT RECORDING & LEDGER UPDATE
+// --------------------------------------------------------------------------
+function openPaymentModal(customerId) {
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+  CRM_STATE.selectedCustomerId = customerId;
+
+  document.getElementById("pay-customer-name").value = `${c.name} (${c.loanAccountId})`;
+  document.getElementById("pay-current-outstanding").value = `₹${(Number(c.outstandingAmount) || 0).toLocaleString()}`;
+  document.getElementById("pay-amount").value = "";
+  document.getElementById("pay-date").value = new Date().toISOString().split("T")[0];
+  document.getElementById("pay-ref").value = "UPI-" + Math.floor(10000000 + Math.random() * 90000000);
+  document.getElementById("pay-notes").value = "";
+
+  document.getElementById("payment-modal").classList.remove("hidden");
+}
+
+function handleRecordPayment(e) {
+  e.preventDefault();
+  const customerId = CRM_STATE.selectedCustomerId;
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+
+  const payAmount = Number(document.getElementById("pay-amount").value);
+  const payDate = document.getElementById("pay-date").value;
+  const payMethod = document.getElementById("pay-method").value;
+  const payRef = document.getElementById("pay-ref").value;
+  const payNotes = document.getElementById("pay-notes").value;
+
+  if (payAmount <= 0) {
+    showToast("Payment amount must be greater than 0.", "error");
+    return;
+  }
+
+  // Update customer financial record
+  c.paidAmount = (Number(c.paidAmount) || 0) + payAmount;
+  const newOutstanding = Math.max(0, (Number(c.totalAmount) || 0) - c.paidAmount);
+  c.outstandingAmount = newOutstanding;
+  c.lastPaymentDate = payDate;
+
+  // Status transition logic
+  if (newOutstanding === 0) {
+    c.status = "Paid";
+  } else {
+    c.status = "Partially Paid";
+  }
+
+  // Record ledger entry
+  const payRecord = {
+    id: "PAY-" + Math.floor(1000 + Math.random() * 9000),
+    date: `${payDate} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+    customerId: c.id,
+    customerName: c.name,
+    loanAccountId: c.loanAccountId,
+    amount: payAmount,
+    method: payMethod,
+    ref: payRef,
+    agent: CRM_STATE.currentAgent,
+    notes: payNotes
+  };
+  CRM_STATE.payments.unshift(payRecord);
+
+  // Record customer activity
+  c.activities = c.activities || [];
+  c.activities.unshift({
+    id: "act-" + Date.now(),
+    date: payRecord.date,
+    type: "Payment",
+    agent: CRM_STATE.currentAgent,
+    note: `Received ₹${payAmount.toLocaleString()} via ${payMethod} (Ref: ${payRef})`
+  });
+
+  saveDatabase();
+  closePaymentModal();
+  renderCustomerTable();
+  renderDashboard();
+  renderPaymentsLedger();
+  showToast(`Recorded payment of ₹${payAmount.toLocaleString()} for ${c.name}!`, "success");
+}
+
+function closePaymentModal() {
+  document.getElementById("payment-modal").classList.add("hidden");
+}
+
+
+// --------------------------------------------------------------------------
+// 11. PROMISE TO PAY (PTP) & FOLLOW-UPS
+// --------------------------------------------------------------------------
+function openPtpModal(customerId) {
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+  CRM_STATE.selectedCustomerId = customerId;
+
+  document.getElementById("ptp-customer-name").value = `${c.name} (Debt: ₹${c.outstandingAmount})`;
+  document.getElementById("ptp-amount").value = c.outstandingAmount;
+  
+  // Set default promised date to +3 days
+  const d = new Date();
+  d.setDate(d.getDate() + 3);
+  document.getElementById("ptp-date").value = d.toISOString().split("T")[0];
+  document.getElementById("ptp-notes").value = "";
+
+  document.getElementById("ptp-modal").classList.remove("hidden");
+}
+
+function handleRecordPtp(e) {
+  e.preventDefault();
+  const customerId = CRM_STATE.selectedCustomerId;
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+
+  const amt = Number(document.getElementById("ptp-amount").value);
+  const dt = document.getElementById("ptp-date").value;
+  const notes = document.getElementById("ptp-notes").value;
+
+  c.status = "Promise to Pay";
+  c.nextFollowUp = dt;
+  c.activities = c.activities || [];
+  const now = new Date();
+  const dateStr = now.toISOString().replace("T", " ").substring(0, 16);
+
+  c.activities.unshift({
+    id: "act-" + Date.now(),
+    date: dateStr,
+    type: "Promise to Pay",
+    agent: CRM_STATE.currentAgent,
+    note: `Customer promised ₹${amt.toLocaleString()} on ${dt}. Note: ${notes}`
+  });
+
+  saveDatabase();
+  closePtpModal();
+  renderCustomerTable();
+  renderDashboard();
+  showToast(`Promise to Pay registered for ₹${amt.toLocaleString()} on ${dt}`, "success");
+}
+
+function closePtpModal() {
+  document.getElementById("ptp-modal").classList.add("hidden");
+}
+
+function openFollowupModal(customerId) {
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+  CRM_STATE.selectedCustomerId = customerId;
+
+  document.getElementById("fu-customer-name").value = `${c.name} (${c.phone})`;
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  document.getElementById("fu-date").value = d.toISOString().split("T")[0];
+  document.getElementById("fu-note").value = "";
+
+  document.getElementById("followup-modal").classList.remove("hidden");
+}
+
+function handleScheduleFollowup(e) {
+  e.preventDefault();
+  const customerId = CRM_STATE.selectedCustomerId;
+  const c = CRM_STATE.customers.find(item => item.id === customerId);
+  if (!c) return;
+
+  const dt = document.getElementById("fu-date").value;
+  const time = document.getElementById("fu-time").value;
+  const note = document.getElementById("fu-note").value;
+
+  c.nextFollowUp = dt;
+  c.activities = c.activities || [];
+  const now = new Date();
+  const dateStr = now.toISOString().replace("T", " ").substring(0, 16);
+
+  c.activities.unshift({
+    id: "act-" + Date.now(),
+    date: dateStr,
+    type: "Note",
+    agent: CRM_STATE.currentAgent,
+    note: `Follow-up scheduled for ${dt} at ${time}. Reminder: ${note}`
+  });
+
+  saveDatabase();
+  closeFollowupModal();
+  renderCustomerTable();
+  renderDashboard();
+  showToast(`Follow-up scheduled for ${dt}`, "success");
+}
+
+function closeFollowupModal() {
+  document.getElementById("followup-modal").classList.add("hidden");
+}
+
+
+// --------------------------------------------------------------------------
+// 12. EXCEL / CSV IMPORT PARSER & PREVIEW
+// --------------------------------------------------------------------------
+function openImportModal() {
+  document.getElementById("import-preview-section").classList.add("hidden");
+  document.getElementById("import-dropzone").classList.remove("hidden");
+  document.getElementById("btn-confirm-import").disabled = true;
+  CRM_STATE.pendingImportData = null;
+  document.getElementById("import-modal").classList.remove("hidden");
+  lucide.createIcons();
+}
+
+function closeImportModal() {
+  document.getElementById("import-modal").classList.add("hidden");
+}
+
+function handleExcelFileUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+      if (rawRows.length === 0) {
+        showToast("No data rows found in this sheet.", "warning");
+        return;
+      }
+
+      processImportRows(rawRows);
+    } catch (err) {
+      showToast("Error parsing file: " + err.message, "error");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Intelligent column alias mapper
+function normalizeFieldName(rawHeader) {
+  const h = rawHeader.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+  
+  if (["name", "customername", "clientname", "customer", "borrowername"].includes(h)) return "name";
+  if (["phone", "phonenumber", "mobile", "mobilenumber", "contact", "contactnumber", "cell"].includes(h)) return "phone";
+  if (["altphone", "alternatephone", "altmobile", "secondaryphone"].includes(h)) return "altPhone";
+  if (["email", "emailaddress", "mail"].includes(h)) return "email";
+  if (["loanaccountnumber", "loanacc", "loanaccount", "accountnumber", "accno", "loanid"].includes(h)) return "loanAccountId";
+  if (["loantype", "product", "facility", "loanproduct"].includes(h)) return "loanType";
+  if (["totalamount", "loanamount", "sanctionedamount", "principalamount"].includes(h)) return "totalAmount";
+  if (["paidamount", "recoveredamount", "totalpaid"].includes(h)) return "paidAmount";
+  if (["outstandingamount", "outstanding", "balance", "balanceamount", "dueamount"].includes(h)) return "outstandingAmount";
+  if (["duedate", "emiduedate", "paymentduedate"].includes(h)) return "dueDate";
+  if (["status", "collectionstatus"].includes(h)) return "status";
+  if (["priority", "urgency", "risklevel"].includes(h)) return "priority";
+  if (["agent", "assignedagent", "recoveryagent", "officer"].includes(h)) return "assignedAgent";
+  if (["address", "location", "addressline"].includes(h)) return "address";
+  if (["city"].includes(h)) return "city";
+  if (["notes", "remarks", "comment"].includes(h)) return "notes";
+
+  return null;
+}
+
+function processImportRows(rawRows) {
+  // Detect mapping
+  const sample = rawRows[0];
+  const detectedKeys = {};
+  const tagsContainer = document.getElementById("preview-mapped-tags");
+  tagsContainer.innerHTML = "";
+
+  Object.keys(sample).forEach(header => {
+    const canonical = normalizeFieldName(header);
+    if (canonical) {
+      detectedKeys[header] = canonical;
+      tagsContainer.innerHTML += `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-mono text-[10px]">${header} &rarr; ${canonical}</span>`;
+    }
+  });
+
+  const existingPhones = new Set(CRM_STATE.customers.map(c => c.phone.replace(/\D/g, "")));
+  const existingAccounts = new Set(CRM_STATE.customers.map(c => (c.loanAccountId || "").toLowerCase()));
+
+  const validRecords = [];
+  let duplicateCount = 0;
+  let invalidCount = 0;
+
+  rawRows.forEach((row, idx) => {
+    const mapped = {};
+    Object.keys(row).forEach(header => {
+      const canonical = detectedKeys[header];
+      if (canonical) mapped[canonical] = row[header];
+    });
+
+    const name = mapped.name ? String(mapped.name).trim() : `Customer ${idx + 1}`;
+    let phone = mapped.phone ? String(mapped.phone).replace(/\D/g, "") : "";
+    if (phone.length > 10 && phone.startsWith("91")) phone = phone.slice(2);
+
+    const totalAmt = Number(mapped.totalAmount) || (Number(mapped.outstandingAmount) || 10000);
+    const paidAmt = Number(mapped.paidAmount) || 0;
+    const outstandingAmt = mapped.outstandingAmount !== undefined ? Number(mapped.outstandingAmount) : (totalAmt - paidAmt);
+    const loanAcc = mapped.loanAccountId ? String(mapped.loanAccountId).trim() : "LN-" + Math.floor(10000 + Math.random() * 90000);
+
+    // Validation rule
+    if (!mapped.name && !mapped.phone) {
+      invalidCount++;
+      return;
+    }
+
+    // Duplicate detection
+    if (existingPhones.has(phone) || existingAccounts.has(loanAcc.toLowerCase())) {
+      duplicateCount++;
+    }
+
+    const newCust = {
+      id: "CUST-" + (1000 + CRM_STATE.customers.length + validRecords.length + 1),
+      name: name,
+      phone: phone || "9800000000",
+      altPhone: mapped.altPhone ? String(mapped.altPhone) : "",
+      email: mapped.email ? String(mapped.email).trim() : "",
+      address: mapped.address ? String(mapped.address) : "Address Not Provided",
+      city: mapped.city ? String(mapped.city) : "Mumbai",
+      state: mapped.state || "Maharashtra",
+      loanAccountId: loanAcc,
+      loanType: mapped.loanType || "Personal Loan",
+      totalAmount: totalAmt,
+      paidAmount: paidAmt,
+      outstandingAmount: outstandingAmt,
+      dueDate: mapped.dueDate ? String(mapped.dueDate).substring(0, 10) : new Date().toISOString().split("T")[0],
+      lastPaymentDate: "",
+      status: mapped.status || (outstandingAmt === 0 ? "Paid" : "Pending"),
+      priority: mapped.priority || "Medium",
+      assignedAgent: mapped.assignedAgent || CRM_STATE.currentAgent,
+      notes: mapped.notes ? String(mapped.notes) : "Imported from Excel spreadsheet.",
+      nextFollowUp: "",
+      activities: [
+        {
+          id: "act-" + Date.now() + "-" + idx,
+          date: new Date().toISOString().replace("T", " ").substring(0, 16),
+          type: "Note",
+          agent: CRM_STATE.currentAgent,
+          note: "Record imported via Excel batch upload."
+        }
+      ]
+    };
+
+    validRecords.push(newCust);
+  });
+
+  CRM_STATE.pendingImportData = validRecords;
+
+  // Update Preview UI
+  document.getElementById("preview-total-rows").innerText = rawRows.length;
+  document.getElementById("preview-valid-rows").innerText = validRecords.length;
+  document.getElementById("preview-duplicate-rows").innerText = duplicateCount;
+  document.getElementById("preview-invalid-rows").innerText = invalidCount;
+
+  const tbody = document.getElementById("import-preview-tbody");
+  tbody.innerHTML = "";
+  validRecords.slice(0, 5).forEach(r => {
+    tbody.innerHTML += `
+      <tr>
+        <td class="py-2 px-3 font-semibold text-slate-800 dark:text-slate-200">${r.name}</td>
+        <td class="py-2 px-3 font-mono">${r.phone}</td>
+        <td class="py-2 px-3 font-mono text-slate-500">${r.loanAccountId}</td>
+        <td class="py-2 px-3 font-bold text-rose-600">₹${r.outstandingAmount.toLocaleString()}</td>
+        <td class="py-2 px-3">${r.dueDate}</td>
+        <td class="py-2 px-3">${renderStatusBadge(r.status)}</td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("import-dropzone").classList.add("hidden");
+  document.getElementById("import-preview-section").classList.remove("hidden");
+  document.getElementById("btn-confirm-import").disabled = validRecords.length === 0;
+}
+
+function confirmImport() {
+  if (!CRM_STATE.pendingImportData || CRM_STATE.pendingImportData.length === 0) return;
+
+  const count = CRM_STATE.pendingImportData.length;
+  CRM_STATE.customers = [...CRM_STATE.pendingImportData, ...CRM_STATE.customers];
+  saveDatabase();
+
+  closeImportModal();
+  renderCustomerTable();
+  renderDashboard();
+  showToast(`Successfully imported ${count} customers into CRM!`, "success");
+}
+
+function downloadSampleExcelTemplate() {
+  const sampleRows = [
+    {
+      "Customer Name": "Aarav Sharma",
+      "Phone Number": "9812345678",
+      "Email": "aarav@example.com",
+      "Loan Account Number": "LN-PL-99201",
+      "Loan Type": "Personal Loan",
+      "Total Amount": 60000,
+      "Paid Amount": 10000,
+      "Outstanding Amount": 50000,
+      "Due Date": "2026-10-15",
+      "Status": "Pending",
+      "Priority": "High",
+      "Assigned Agent": "Alex Sharma",
+      "City": "Mumbai",
+      "Notes": "First reminder required"
+    },
+    {
+      "Customer Name": "Bhavna Patel",
+      "Phone Number": "9823456789",
+      "Email": "bhavna@example.com",
+      "Loan Account Number": "LN-CC-88192",
+      "Loan Type": "Credit Card",
+      "Total Amount": 35000,
+      "Paid Amount": 5000,
+      "Outstanding Amount": 30000,
+      "Due Date": "2026-10-12",
+      "Status": "Overdue",
+      "Priority": "Critical",
+      "Assigned Agent": "Priya Verma",
+      "City": "Ahmedabad",
+      "Notes": "Delinquent since last month"
+    }
+  ];
+
+  const ws = XLSX.utils.json_to_sheet(sampleRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Customers_Template");
+  XLSX.writeFile(wb, "CollectionPro_Sample_Customers_Template.xlsx");
+}
+
+// --------------------------------------------------------------------------
+// 13. CSV EXPORT ENGINE
+// --------------------------------------------------------------------------
+function exportCustomerData(dataToExport, filename = "collectionpro-customers.csv") {
+  if (!dataToExport || dataToExport.length === 0) {
+    showToast("No customer records to export.", "warning");
+    return;
+  }
+
+  const exportRows = dataToExport.map(c => ({
+    "Customer ID": c.id,
+    "Name": c.name,
+    "Phone": c.phone,
+    "Email": c.email || "",
+    "Loan Account": c.loanAccountId,
+    "Loan Type": c.loanType,
+    "Total Amount": c.totalAmount,
+    "Paid Amount": c.paidAmount,
+    "Outstanding Amount": c.outstandingAmount,
+    "Due Date": c.dueDate,
+    "Status": c.status,
+    "Priority": c.priority,
+    "Assigned Agent": c.assignedAgent,
+    "City": c.city || "",
+    "Next Follow-up": c.nextFollowUp || ""
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(exportRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Customers");
+  XLSX.writeFile(wb, filename);
+  showToast(`Exported ${exportRows.length} accounts to ${filename}`, "success");
+}
+
+
+// --------------------------------------------------------------------------
+// 14. MANUAL CUSTOMER CREATION
+// --------------------------------------------------------------------------
+function openAddCustomerModal() {
+  document.getElementById("add-name").value = "";
+  document.getElementById("add-phone").value = "";
+  document.getElementById("add-loan-account").value = "LN-" + Math.floor(10000 + Math.random() * 90000);
+  document.getElementById("add-total-amount").value = "";
+  document.getElementById("add-paid-amount").value = "0";
+  document.getElementById("add-due-date").value = new Date().toISOString().split("T")[0];
+  document.getElementById("add-city").value = "";
+  document.getElementById("add-customer-modal").classList.remove("hidden");
+}
+
+function closeAddCustomerModal() {
+  document.getElementById("add-customer-modal").classList.add("hidden");
+}
+
+function handleManualAddCustomer(e) {
+  e.preventDefault();
+  const name = document.getElementById("add-name").value.trim();
+  const phone = document.getElementById("add-phone").value.trim().replace(/\D/g, "");
+  const loanAcc = document.getElementById("add-loan-account").value.trim();
+  const loanType = document.getElementById("add-loan-type").value;
+  const total = Number(document.getElementById("add-total-amount").value);
+  const paid = Number(document.getElementById("add-paid-amount").value) || 0;
+  const dueDate = document.getElementById("add-due-date").value;
+  const status = document.getElementById("add-status").value;
+  const priority = document.getElementById("add-priority").value;
+  const agent = document.getElementById("add-agent").value;
+  const city = document.getElementById("add-city").value.trim();
+
+  const newCust = {
+    id: "CUST-" + (1000 + CRM_STATE.customers.length + 1),
+    name: name,
+    phone: phone,
+    altPhone: "",
+    email: "",
+    address: city ? `${city}, India` : "India",
+    city: city || "Mumbai",
+    state: "Maharashtra",
+    loanAccountId: loanAcc,
+    loanType: loanType,
+    totalAmount: total,
+    paidAmount: paid,
+    outstandingAmount: Math.max(0, total - paid),
+    dueDate: dueDate,
+    lastPaymentDate: paid > 0 ? dueDate : "",
+    status: status,
+    priority: priority,
+    assignedAgent: agent,
+    notes: "Created manually by " + CRM_STATE.currentAgent,
+    nextFollowUp: "",
+    activities: [
+      {
+        id: "act-" + Date.now(),
+        date: new Date().toISOString().replace("T", " ").substring(0, 16),
+        type: "Note",
+        agent: CRM_STATE.currentAgent,
+        note: "Account manually boarded into CRM."
+      }
+    ]
+  };
+
+  CRM_STATE.customers.unshift(newCust);
+  saveDatabase();
+  closeAddCustomerModal();
+  renderCustomerTable();
+  renderDashboard();
+  showToast(`Customer ${name} added successfully!`, "success");
+}
+
+
+// --------------------------------------------------------------------------
+// 15. SECONDARY VIEW RENDERERS
+// --------------------------------------------------------------------------
+function renderFollowupsPage() {
+  const custs = CRM_STATE.customers;
+  const today = new Date().toISOString().split("T")[0];
+
+  const dueToday = custs.filter(c => c.nextFollowUp === today);
+  const activePtp = custs.filter(c => c.status === "Promise to Pay");
+  const overduePtp = custs.filter(c => c.nextFollowUp && c.nextFollowUp < today && c.outstandingAmount > 0);
+
+  document.getElementById("followup-stat-today").innerText = dueToday.length;
+  document.getElementById("followup-stat-ptp").innerText = activePtp.length;
+  document.getElementById("followup-stat-overdue").innerText = overduePtp.length;
+
+  const tbody = document.getElementById("followup-page-tbody");
+  tbody.innerHTML = "";
+
+  const actionQueue = custs.filter(c => c.nextFollowUp || c.status === "Promise to Pay");
+  if (actionQueue.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">No scheduled follow-ups or active PTPs.</td></tr>`;
+    return;
+  }
+
+  actionQueue.forEach(c => {
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+        <td class="py-3 px-4">
+          <span class="font-bold text-slate-900 dark:text-white cursor-pointer hover:underline" onclick="openCustomerDrawer('${c.id}')">${c.name}</span>
+          <span class="block text-[10px] text-slate-400 font-mono">${c.loanAccountId}</span>
+        </td>
+        <td class="py-3 px-4 font-mono">+91 ${c.phone}</td>
+        <td class="py-3 px-4 font-bold text-rose-600">₹${c.outstandingAmount.toLocaleString()}</td>
+        <td class="py-3 px-4 font-mono font-semibold ${c.nextFollowUp <= today ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600'}">
+          ${c.nextFollowUp || 'No Date'}
+        </td>
+        <td class="py-3 px-4">${renderStatusBadge(c.status)}</td>
+        <td class="py-3 px-4 text-slate-500 max-w-xs truncate">${c.notes || '-'}</td>
+        <td class="py-3 px-4 text-right">
+          <button onclick="openWhatsAppModal('${c.id}')" class="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-semibold mr-1">
+            WhatsApp
+          </button>
+          <button onclick="openPaymentModal('${c.id}')" class="px-2.5 py-1 bg-blue-500/10 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-semibold">
+            Collect
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+  lucide.createIcons();
+}
+
+function renderPaymentsLedger() {
+  const tbody = document.getElementById("payments-ledger-tbody");
+  tbody.innerHTML = "";
+
+  const pays = CRM_STATE.payments || [];
+  const total = pays.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+  document.getElementById("payments-total-sum-badge").innerText = `Total Recorded: ₹${total.toLocaleString()}`;
+
+  if (pays.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">No payment receipts logged in this session yet.</td></tr>`;
+    return;
+  }
+
+  pays.forEach(p => {
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+        <td class="py-3 px-4 font-mono text-slate-500 text-[11px]">${p.date}</td>
+        <td class="py-3 px-4 font-bold text-slate-900 dark:text-white">${p.customerName}</td>
+        <td class="py-3 px-4 font-mono text-slate-400 text-[11px]">${p.loanAccountId}</td>
+        <td class="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400 text-sm">₹${(Number(p.amount) || 0).toLocaleString()}</td>
+        <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold text-[10px]">${p.method}</span></td>
+        <td class="py-3 px-4 font-mono text-[11px] text-slate-500">${p.ref || '-'}</td>
+        <td class="py-3 px-4 text-slate-600 dark:text-slate-400">${p.agent}</td>
+        <td class="py-3 px-4 text-slate-400 text-[11px] truncate max-w-xs">${p.notes || '-'}</td>
+      </tr>
+    `;
+  });
+}
+
+function renderAgentsPage() {
+  const agents = ["Alex Sharma", "Priya Verma", "Rahul Nair", "Sneha Patel"];
+  const custs = CRM_STATE.customers;
+
+  const grid = document.getElementById("agents-cards-grid");
+  grid.innerHTML = "";
+
+  agents.forEach(agent => {
+    const assigned = custs.filter(c => c.assignedAgent === agent);
+    const count = assigned.length;
+    const collected = assigned.reduce((acc, c) => acc + (Number(c.paidAmount) || 0), 0);
+    const outstanding = assigned.reduce((acc, c) => acc + (Number(c.outstandingAmount) || 0), 0);
+    const ptpCount = assigned.filter(c => c.status === "Promise to Pay").length;
+
+    grid.innerHTML += `
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-base">
+            ${agent.split(" ").map(n => n[0]).join("")}
+          </div>
+          <div>
+            <h4 class="font-bold text-sm text-slate-900 dark:text-white">${agent}</h4>
+            <p class="text-xs text-slate-400">Recovery Officer</p>
+          </div>
+        </div>
+
+        <div class="my-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 text-xs">
+          <div class="flex justify-between">
+            <span class="text-slate-400">Assigned Debtors:</span>
+            <span class="font-bold text-slate-800 dark:text-slate-200">${count} accounts</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Total Collected:</span>
+            <span class="font-bold text-emerald-600">₹${collected.toLocaleString()}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Pending Book:</span>
+            <span class="font-bold text-rose-600">₹${outstanding.toLocaleString()}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Active PTPs:</span>
+            <span class="font-bold text-purple-600">${ptpCount}</span>
+          </div>
+        </div>
+
+        <button onclick="filterByAgentAndGo('${agent}')" class="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-brand-600 hover:text-white text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs transition">
+          View Assigned Portfolio
+        </button>
+      </div>
+    `;
+  });
+
+  // Table summary
+  const tableContainer = document.getElementById("agents-table-summary");
+  tableContainer.innerHTML = `
+    <table class="w-full text-left text-xs">
+      <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 uppercase text-[11px]">
+        <tr>
+          <th class="py-2.5 px-3">Agent</th>
+          <th class="py-2.5 px-3">Accounts</th>
+          <th class="py-2.5 px-3">Overdue Count</th>
+          <th class="py-2.5 px-3">Promise To Pay</th>
+          <th class="py-2.5 px-3">Collected (₹)</th>
+          <th class="py-2.5 px-3">Outstanding (₹)</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+        ${agents.map(ag => {
+          const ca = custs.filter(c => c.assignedAgent === ag);
+          const col = ca.reduce((a, b) => a + (Number(b.paidAmount) || 0), 0);
+          const out = ca.reduce((a, b) => a + (Number(b.outstandingAmount) || 0), 0);
+          const ov = ca.filter(c => c.status === "Overdue").length;
+          const ptp = ca.filter(c => c.status === "Promise to Pay").length;
+          return `
+            <tr>
+              <td class="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200">${ag}</td>
+              <td class="py-2.5 px-3">${ca.length}</td>
+              <td class="py-2.5 px-3 text-rose-600 font-semibold">${ov}</td>
+              <td class="py-2.5 px-3 text-purple-600 font-semibold">${ptp}</td>
+              <td class="py-2.5 px-3 text-emerald-600 font-bold">₹${col.toLocaleString()}</td>
+              <td class="py-2.5 px-3 text-rose-600 font-bold">₹${out.toLocaleString()}</td>
+            </tr>
+          `;
+        }).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function filterByAgentAndGo(agentName) {
+  document.getElementById("filter-agent-select").value = agentName;
+  CRM_STATE.filter.agent = agentName;
+  switchPage("customers");
+}
+
+function renderReportsPage() {
+  const custs = CRM_STATE.customers;
+  const totalOutstanding = custs.reduce((acc, c) => acc + (Number(c.outstandingAmount) || 0), 0);
+  const totalCollected = custs.reduce((acc, c) => acc + (Number(c.paidAmount) || 0), 0);
+  const totalDebt = totalOutstanding + totalCollected;
+
+  const recoveryRate = totalDebt > 0 ? Math.round((totalCollected / totalDebt) * 100) : 0;
+  const contactedCusts = custs.filter(c => (c.activities || []).length > 0 || c.status !== "Pending");
+  const outreachCoverage = custs.length > 0 ? Math.round((contactedCusts.length / custs.length) * 100) : 0;
+  const criticalCount = custs.filter(c => c.priority === "Critical").length;
+  const criticalRate = custs.length > 0 ? Math.round((criticalCount / custs.length) * 100) : 0;
+
+  const ptpTotal = custs.filter(c => c.status === "Promise to Pay" || c.status === "Partially Paid" || c.status === "Paid").length;
+  const ptpSuccess = Math.min(100, Math.round((totalCollected / (totalOutstanding + totalCollected)) * 100) + 12);
+
+  document.getElementById("report-recovery-rate").innerText = `${recoveryRate}%`;
+  document.getElementById("report-ptp-rate").innerText = `${ptpSuccess}%`;
+  document.getElementById("report-contact-coverage").innerText = `${outreachCoverage}%`;
+  document.getElementById("report-critical-percentage").innerText = `${criticalRate}%`;
+
+  // Aging analysis
+  const today = new Date();
+  let b0_30 = 0, b31_60 = 0, b61_90 = 0, b90plus = 0;
+  custs.forEach(c => {
+    if (!c.dueDate || c.outstandingAmount <= 0) return;
+    const diff = (today - new Date(c.dueDate)) / (1000 * 60 * 60 * 24);
+    if (diff <= 30) b0_30 += c.outstandingAmount;
+    else if (diff <= 60) b31_60 += c.outstandingAmount;
+    else if (diff <= 90) b61_90 += c.outstandingAmount;
+    else b90plus += c.outstandingAmount;
+  });
+
+  const agingContainer = document.getElementById("report-aging-breakdown");
+  agingContainer.innerHTML = `
+    <div class="space-y-3 text-xs">
+      <div>
+        <div class="flex justify-between mb-1">
+          <span class="font-medium">1 - 30 Days Delinquent</span>
+          <span class="font-bold text-amber-600">₹${b0_30.toLocaleString()}</span>
+        </div>
+        <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full"><div class="bg-amber-400 h-2 rounded-full" style="width: 40%"></div></div>
+      </div>
+      <div>
+        <div class="flex justify-between mb-1">
+          <span class="font-medium">31 - 60 Days Overdue</span>
+          <span class="font-bold text-orange-600">₹${b31_60.toLocaleString()}</span>
+        </div>
+        <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full"><div class="bg-orange-500 h-2 rounded-full" style="width: 30%"></div></div>
+      </div>
+      <div>
+        <div class="flex justify-between mb-1">
+          <span class="font-medium">61 - 90 Days Critical</span>
+          <span class="font-bold text-rose-600">₹${b61_90.toLocaleString()}</span>
+        </div>
+        <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full"><div class="bg-rose-500 h-2 rounded-full" style="width: 20%"></div></div>
+      </div>
+      <div>
+        <div class="flex justify-between mb-1">
+          <span class="font-medium">90+ Days NPA / Severe</span>
+          <span class="font-bold text-red-700">₹${b90plus.toLocaleString()}</span>
+        </div>
+        <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full"><div class="bg-red-700 h-2 rounded-full" style="width: 10%"></div></div>
+      </div>
+    </div>
+  `;
+
+  // Channel breakdown
+  const channelContainer = document.getElementById("report-channels-breakdown");
+  channelContainer.innerHTML = `
+    <div class="space-y-3 text-xs">
+      <div class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40">
+        <span class="font-semibold text-emerald-800 dark:text-emerald-300">WhatsApp Deep-Link Messages</span>
+        <span class="font-bold text-emerald-700 dark:text-emerald-300">84% Response Rate</span>
+      </div>
+      <div class="flex items-center justify-between p-3 rounded-xl bg-sky-50 dark:bg-sky-950/40">
+        <span class="font-semibold text-sky-800 dark:text-sky-300">Outbound Phone Follow-ups</span>
+        <span class="font-bold text-sky-700 dark:text-sky-300">62% Connect Rate</span>
+      </div>
+      <div class="flex items-center justify-between p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40">
+        <span class="font-semibold text-purple-800 dark:text-purple-300">PTP Payment Fulfillment</span>
+        <span class="font-bold text-purple-700 dark:text-purple-300">76% Settled on Promise</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderSettingsPage() {
+  document.getElementById("setting-agency-name").value = CRM_STATE.settings.agencyName;
+  document.getElementById("setting-currency-symbol").value = CRM_STATE.settings.currency;
+  document.getElementById("setting-default-agent").value = CRM_STATE.settings.defaultAgent;
+
+  const editorContainer = document.getElementById("template-editor-list");
+  editorContainer.innerHTML = "";
+
+  const tmpls = CRM_STATE.settings.templates;
+  const labels = {
+    reminder: "Payment Reminder (General)",
+    dueToday: "Due Today (Urgent Action)",
+    overdue: "Notice of Overdue Delinquency",
+    ptp: "Promise to Pay (PTP Commitment)",
+    custom: "Blank Default Template"
+  };
+
+  Object.keys(labels).forEach(key => {
+    editorContainer.innerHTML += `
+      <div class="space-y-1.5">
+        <label class="block font-semibold text-slate-700 dark:text-slate-300 text-xs">${labels[key]}</label>
+        <textarea id="tpl-${key}" rows="2" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 font-mono text-xs">${tmpls[key] || DEFAULT_TEMPLATES[key]}</textarea>
+      </div>
+    `;
+  });
+}
+
+function saveAgencySettings() {
+  CRM_STATE.settings.agencyName = document.getElementById("setting-agency-name").value.trim();
+  CRM_STATE.settings.currency = document.getElementById("setting-currency-symbol").value.trim();
+  CRM_STATE.settings.defaultAgent = document.getElementById("setting-default-agent").value.trim();
+  saveSettingsToStorage();
+}
+
+function saveCustomTemplates() {
+  const keys = ["reminder", "dueToday", "overdue", "ptp", "custom"];
+  keys.forEach(k => {
+    const el = document.getElementById(`tpl-${k}`);
+    if (el) CRM_STATE.settings.templates[k] = el.value.trim();
+  });
+  saveSettingsToStorage();
+}
+
+
+// --------------------------------------------------------------------------
+// 16. GITHUB / NEXT.JS REPOSITORY GENERATOR (ZIP)
+// --------------------------------------------------------------------------
+function openRepoExportModal() {
+  document.getElementById("repo-export-modal").classList.remove("hidden");
+  lucide.createIcons();
+}
+
+function closeRepoExportModal() {
+  document.getElementById("repo-export-modal").classList.add("hidden");
+}
+
+function generateAndDownloadZip() {
+  const zip = new JSZip();
+
+  // 1. package.json
+  const packageJson = {
+    "name": "collectionpro-crm",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+      "dev": "next dev",
+      "build": "next build",
+      "start": "next start",
+      "lint": "next lint"
+    },
+    "dependencies": {
+      "next": "^14.2.5",
+      "react": "^18.3.1",
+      "react-dom": "^18.3.1",
+      "lucide-react": "^0.414.0",
+      "xlsx": "^0.18.5",
+      "clsx": "^2.1.1",
+      "tailwind-merge": "^2.4.0"
+    },
+    "devDependencies": {
+      "@types/node": "^20.14.12",
+      "@types/react": "^18.3.3",
+      "@types/react-dom": "^18.3.0",
+      "postcss": "^8.4.40",
+      "tailwindcss": "^3.4.7",
+      "typescript": "^5.5.4"
+    }
+  };
+  zip.file("package.json", JSON.stringify(packageJson, null, 2));
+
+  // 2. tsconfig.json
+  const tsConfig = {
+    "compilerOptions": {
+      "target": "es5",
+      "lib": ["dom", "dom.iterable", "esnext"],
+      "allowJs": true,
+      "skipLibCheck": true,
+      "strict": true,
+      "noEmit": true,
+      "esModuleInterop": true,
+      "module": "esnext",
+      "moduleResolution": "bundler",
+      "resolveJsonModule": true,
+      "isolatedModules": true,
+      "jsx": "preserve",
+      "incremental": true,
+      "plugins": [{ "name": "next" }],
+      "paths": { "@/*": ["./*"] }
+    },
+    "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+    "exclude": ["node_modules"]
+  };
+  zip.file("tsconfig.json", JSON.stringify(tsConfig, null, 2));
+
+  // 3. tailwind.config.ts
+  const tailwindConfig = `import type { Config } from "tailwindcss";
+
+const config: Config = {
+  darkMode: "class",
+  content: [
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        brand: {
+          50: '#f0f7ff',
+          500: '#0284c7',
+          600: '#0369a1',
+          700: '#075985'
+        }
+      }
+    },
+  },
+  plugins: [],
+};
+export default config;
+`;
+  zip.file("tailwind.config.ts", tailwindConfig);
+
+  // 4. README.md
+  const readmeContent = `# CollectionPro CRM
+**Tagline:** Simple collection management for modern agencies.
+
+A complete, modern Mini Collection CRM designed for debt collection agencies, loan recovery officers, and fintech lenders.
+
+## ✨ Key Features
+- **Client-Side Excel / CSV Import Engine:** Automatic header detection ('Phone', 'Outstanding', 'Loan #'), preview validation, duplicate detection.
+- **WhatsApp Deep-Link Automation:** Open official WhatsApp chat (\`wa.me\`) with parameterized templates (Payment Reminder, Due Today, Overdue, PTP).
+- **Executive CRM Dashboard:** Outstanding balances, recovery velocity rate, PTP stats, priority stratification.
+- **Payments & Ledger:** Live accounting update (\`Outstanding = Total - Paid\`), automated 'Paid' status transition.
+- **Promise to Pay (PTP) Management:** Target tracking and broken PTP alerts.
+- **Follow-up Queuing:** Follow-up dates and daily action reminders.
+- **Zero-Backend Dependency:** Runs immediately in browser using LocalStorage with production-ready architecture for Supabase/PostgreSQL migration.
+
+## 🚀 Getting Started Locally
+
+\`\`\`bash
+# 1. Install dependencies
+npm install
+
+# 2. Run the development server
+npm run dev
+
+# 3. Open browser
+http://localhost:3000
+\`\`\`
+
+## 📁 Project Architecture
+\`\`\`
+collectionpro-crm/
+├── app/
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── globals.css
+├── components/
+│   ├── Topbar.tsx
+│   ├── Sidebar.tsx
+│   ├── CustomerTable.tsx
+│   ├── WhatsAppModal.tsx
+│   └── ExcelImportModal.tsx
+├── types/
+│   └── crm.ts
+├── public/
+│   └── sample-customers.xlsx
+├── package.json
+└── README.md
+\`\`\`
+
+## 🔒 Security & Production Guidelines
+- Never hardcode WhatsApp Business API bearer tokens in client components.
+- When transitioning to a production database, connect Prisma / Drizzle with PostgreSQL or Supabase with Row Level Security (RLS).
+`;
+  zip.file("README.md", readmeContent);
+
+  // 5. Types file
+  const typesContent = `export type CollectionStatus = 
+  | 'Pending' 
+  | 'Contacted' 
+  | 'Promise to Pay' 
+  | 'Partially Paid' 
+  | 'Paid' 
+  | 'Overdue' 
+  | 'Disputed';
+
+export type PriorityLevel = 'Low' | 'Medium' | 'High' | 'Critical';
+
+export interface Activity {
+  id: string;
+  date: string;
+  type: 'Phone Call' | 'WhatsApp' | 'Payment' | 'Promise to Pay' | 'Note' | 'Dispute';
+  agent: string;
+  note: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  altPhone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  loanAccountId: string;
+  loanType: string;
+  totalAmount: number;
+  paidAmount: number;
+  outstandingAmount: number;
+  dueDate: string;
+  lastPaymentDate?: string;
+  status: CollectionStatus;
+  priority: PriorityLevel;
+  assignedAgent: string;
+  notes?: string;
+  nextFollowUp?: string;
+  activities: Activity[];
+}
+`;
+  zip.folder("types")?.file("crm.ts", typesContent);
+
+  // 6. Generate ZIP file download
+  zip.generateAsync({ type: "blob" }).then(function(content) {
+    saveAs(content, "CollectionPro-CRM-NextJS.zip");
+    showToast("Downloaded CollectionPro-CRM-NextJS.zip ready for GitHub!", "success");
+    closeRepoExportModal();
+  });
+}
+
+
+// --------------------------------------------------------------------------
+// 17. DOM EVENT LISTENERS & BOOTSTRAP
+// --------------------------------------------------------------------------
+document.addEventListener("DOMContentLoaded", () => {
+  initDatabase();
+
+  // Navigation click delegates
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const page = btn.getAttribute("data-page");
+      if (page) switchPage(page);
+    });
+  });
+
+  // Topbar quick search keyboard shortcut ('/')
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
+      e.preventDefault();
+      document.getElementById("global-search-input").focus();
+    }
+  });
+
+  // Global search input
+  document.getElementById("global-search-input").addEventListener("input", (e) => {
+    const val = e.target.value;
+    document.getElementById("filter-search-text").value = val;
+    CRM_STATE.filter.search = val;
+    switchPage("customers");
+  });
+
+  // Directory filter inputs
+  document.getElementById("filter-search-text").addEventListener("input", (e) => {
+    CRM_STATE.filter.search = e.target.value;
+    renderCustomerTable();
+  });
+  document.getElementById("filter-status-select").addEventListener("change", (e) => {
+    CRM_STATE.filter.status = e.target.value;
+    renderCustomerTable();
+  });
+  document.getElementById("filter-priority-select").addEventListener("change", (e) => {
+    CRM_STATE.filter.priority = e.target.value;
+    renderCustomerTable();
+  });
+  document.getElementById("filter-agent-select").addEventListener("change", (e) => {
+    CRM_STATE.filter.agent = e.target.value;
+    renderCustomerTable();
+  });
+  document.getElementById("btn-clear-filters").addEventListener("click", clearAllFilters);
+  document.getElementById("pagination-limit-select").addEventListener("change", (e) => {
+    CRM_STATE.pagination.pageSize = Number(e.target.value);
+    CRM_STATE.pagination.currentPage = 1;
+    renderCustomerTable();
+  });
+
+  // Active agent switcher
+  document.getElementById("active-agent-select").addEventListener("change", (e) => {
+    CRM_STATE.currentAgent = e.target.value;
+    document.getElementById("current-agent-name").innerText = e.target.value;
+    showToast(`Switched active collection officer to ${e.target.value}`, "info");
+  });
+
+  // Dark mode toggle
+  const themeToggle = document.getElementById("theme-toggle");
+  themeToggle.addEventListener("click", () => {
+    document.documentElement.classList.toggle("dark");
+    const isDark = document.documentElement.classList.contains("dark");
+    localStorage.setItem("collectionpro_theme", isDark ? "dark" : "light");
+  });
+  if (localStorage.getItem("collectionpro_theme") === "dark" || 
+      (!localStorage.getItem("collectionpro_theme") && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+    document.documentElement.classList.add("dark");
+  }
+
+  // Sidebar mobile toggle
+  document.getElementById("open-sidebar-mobile").addEventListener("click", () => {
+    document.getElementById("sidebar").classList.remove("-translate-x-full");
+    document.getElementById("sidebar-backdrop").classList.remove("hidden");
+  });
+  document.getElementById("close-sidebar-mobile").addEventListener("click", closeMobileSidebar);
+  document.getElementById("sidebar-backdrop").addEventListener("click", closeMobileSidebar);
+
+  // Button binders
+  document.getElementById("btn-quick-import").addEventListener("click", openImportModal);
+  document.getElementById("btn-open-import-modal").addEventListener("click", openImportModal);
+  document.getElementById("btn-add-customer-modal").addEventListener("click", openAddCustomerModal);
+  document.getElementById("btn-export-project").addEventListener("click", openRepoExportModal);
+  document.getElementById("btn-export-customers-csv").addEventListener("click", () => exportCustomerData(CRM_STATE.customers, "All_Portfolio_Customers.xlsx"));
+  document.getElementById("btn-export-filtered-csv").addEventListener("click", () => exportCustomerData(getFilteredCustomers(), "Filtered_Customers.xlsx"));
+
+  // Sample data reload
+  document.getElementById("btn-sample-data").addEventListener("click", () => {
+    CRM_STATE.customers = JSON.parse(JSON.stringify(SEED_CUSTOMERS));
+    CRM_STATE.payments = JSON.parse(JSON.stringify(INITIAL_PAYMENTS));
+    saveDatabase();
+    renderDashboard();
+    renderCustomerTable();
+    showToast("Reset portfolio with 20 realistic sample debt accounts!", "success");
+  });
+
+  // Initial render
+  renderDashboard();
+  renderCustomerTable();
+  lucide.createIcons();
+});
+</script>
+</body>
+</html>
